@@ -2,26 +2,26 @@
   <defs>
     <!-- Background Linear Gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1e1b4b" /> <!-- deep violet-indigo -->
-      <stop offset="50%" stop-color="#12101e" /> <!-- obsidian -->
-      <stop offset="100%" stop-color="#090514" /> <!-- black -->
+      <stop offset="0%" stop-color="#0f0c1b" />
+      <stop offset="50%" stop-color="#07050f" />
+      <stop offset="100%" stop-color="#020105" />
     </linearGradient>
 
     <!-- Wallet / Card Core Gradient -->
-    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8b5cf6" /> <!-- violet-500 -->
-      <stop offset="100%" stop-color="#584cf4" /> <!-- electric-violet -->
+    <linearGradient id="walletGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#584cf4" />
     </linearGradient>
 
-    <!-- Accent Coin / Glow Gradient -->
-    <linearGradient id="accentGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#ec4899" /> <!-- pink-500 -->
-      <stop offset="100%" stop-color="#f43f5e" /> <!-- rose-500 -->
+    <!-- Star & Coin Golden Gradient -->
+    <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
     </linearGradient>
 
-    <!-- Smooth drop shadows -->
+    <!-- Drop shadows and neon glow filters -->
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5" />
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#000000" flood-opacity="0.65" />
     </filter>
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur stdDeviation="8" result="blur" />
@@ -29,27 +29,57 @@
     </filter>
   </defs>
 
-  <!-- Base Circle Background -->
+  <!-- Base Rounded Rectangle Background -->
   <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
 
-  <!-- Stylized Geometric Design -->
-  <g transform="translate(256, 256)" filter="url(#shadow)">
-    <!-- Floating upward trend line under the wallet -->
-    <path d="M-140,80 L-60,30 L20,70 L140,-20" fill="none" stroke="url(#accentGrad)" stroke-width="8" stroke-linecap="round" opacity="0.3" />
+  <!-- Shimmering Magic Stars (Pinched 4-point curves) -->
+  <!-- Top-Left Large Golden Star -->
+  <path d="M 130,90 Q 130,130 170,130 Q 130,130 130,170 Q 130,130 90,130 Q 130,130 130,90" fill="url(#coinGrad)" filter="url(#glow)" />
+  
+  <!-- Top-Right Medium Pink Star -->
+  <path d="M 390,90 Q 390,120 420,120 Q 390,120 390,150 Q 390,120 360,120 Q 390,120 390,90" fill="#ec4899" filter="url(#glow)" />
+  
+  <!-- Bottom-Right Medium Cyan Star -->
+  <path d="M 400,348 Q 400,380 432,380 Q 400,380 400,412 Q 400,380 368,380 Q 400,380 400,348" fill="#38bdf8" filter="url(#glow)" />
+  
+  <!-- Bottom-Left Small Golden Star -->
+  <path d="M 140,368 Q 140,390 162,390 Q 140,390 140,412 Q 140,390 118,390 Q 140,390 140,368" fill="url(#coinGrad)" />
+  
+  <!-- Center-Left Tiny White Star -->
+  <path d="M 90,234 Q 90,250 106,250 Q 90,250 90,266 Q 90,250 74,250 Q 90,250 90,234" fill="#ffffff" opacity="0.8" />
 
-    <!-- Wallet Frame (Rounded glassmorphic shape) -->
-    <rect x="-110" y="-80" width="220" height="150" rx="28" fill="url(#cardGrad)" />
+  <!-- Floating, Stylized Card Wallet (Center) -->
+  <g transform="translate(256, 266) rotate(-5)" filter="url(#shadow)">
+    <!-- Credit Cards slipping out of the back slot -->
+    <!-- Pink Card -->
+    <rect x="-90" y="-105" width="130" height="80" rx="16" fill="#ec4899" transform="rotate(-12)" />
+    <!-- Teal-Green Card -->
+    <rect x="-50" y="-95" width="130" height="80" rx="16" fill="#10b981" transform="rotate(8)" />
+    
+    <!-- Wallet Main Back Shell -->
+    <rect x="-120" y="-60" width="240" height="140" rx="24" fill="url(#walletGrad)" />
+    
+    <!-- Front Pocket Overlay (for dual-tone premium depth) -->
+    <rect x="-120" y="-20" width="240" height="100" rx="20" fill="#230c4e" opacity="0.8" />
+    
+    <!-- Flap strap -->
+    <path d="M 30,-35 L 100,-35 C 110,-35 110,-10 100,-10 L 30,-10 Z" fill="#15052a" opacity="0.9" />
+    
+    <!-- Gold button clasp -->
+    <circle cx="85" cy="-22" r="14" fill="url(#coinGrad)" filter="url(#glow)" />
+    <circle cx="85" cy="-22" r="6" fill="#d97706" />
+  </g>
 
-    <!-- Wallet flap -->
-    <path d="M40,-35 L105,-35 C115,-35 115,-10 105,-10 L40,-10 Z" fill="#4c1d95" opacity="0.8" />
+  <!-- Floating Coins representing financial growth -->
+  <circle cx="210" cy="180" r="14" fill="url(#coinGrad)" filter="url(#glow)" />
+  <circle cx="310" cy="170" r="10" fill="url(#coinGrad)" />
+  <circle cx="330" cy="340" r="12" fill="url(#coinGrad)" />
 
-    <!-- Golden Lock Circle -->
-    <circle cx="70" cy="-22" r="14" fill="#fbbf24" filter="url(#glow)" />
-    <circle cx="70" cy="-22" r="6" fill="#d97706" />
-
-    <!-- Rising chart bars popping out of the wallet -->
-    <rect x="-70" y="-140" width="22" height="85" rx="8" fill="url(#accentGrad)" filter="url(#glow)" />
-    <rect x="-35" y="-120" width="22" height="65" rx="8" fill="#38bdf8" />
-    <rect x="0" y="-100" width="22" height="45" rx="8" fill="#34d399" />
+  <!-- Tiny magical sparkle particles -->
+  <g fill="#ffffff" opacity="0.6">
+    <circle cx="280" cy="110" r="3" />
+    <circle cx="110" cy="300" r="2" />
+    <circle cx="430" cy="270" r="3" />
+    <circle cx="250" cy="400" r="2.5" />
   </g>
 </svg>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fam-tracker-v1.0.2'; // Bump version to force update clients
+const CACHE_NAME = 'fam-tracker-v1.0.5'; // Bump version to force update clients
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
