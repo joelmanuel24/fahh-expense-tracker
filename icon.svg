@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Linear Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" /> <!-- deep violet-indigo -->
+      <stop offset="50%" stop-color="#12101e" /> <!-- obsidian -->
+      <stop offset="100%" stop-color="#090514" /> <!-- black -->
+    </linearGradient>
+
+    <!-- Wallet / Card Core Gradient -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" /> <!-- violet-500 -->
+      <stop offset="100%" stop-color="#584cf4" /> <!-- electric-violet -->
+    </linearGradient>
+
+    <!-- Accent Coin / Glow Gradient -->
+    <linearGradient id="accentGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ec4899" /> <!-- pink-500 -->
+      <stop offset="100%" stop-color="#f43f5e" /> <!-- rose-500 -->
+    </linearGradient>
+
+    <!-- Smooth drop shadows -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Base Circle Background -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+
+  <!-- Stylized Geometric Design -->
+  <g transform="translate(256, 256)" filter="url(#shadow)">
+    <!-- Floating upward trend line under the wallet -->
+    <path d="M-140,80 L-60,30 L20,70 L140,-20" fill="none" stroke="url(#accentGrad)" stroke-width="8" stroke-linecap="round" opacity="0.3" />
+
+    <!-- Wallet Frame (Rounded glassmorphic shape) -->
+    <rect x="-110" y="-80" width="220" height="150" rx="28" fill="url(#cardGrad)" />
+
+    <!-- Wallet flap -->
+    <path d="M40,-35 L105,-35 C115,-35 115,-10 105,-10 L40,-10 Z" fill="#4c1d95" opacity="0.8" />
+
+    <!-- Golden Lock Circle -->
+    <circle cx="70" cy="-22" r="14" fill="#fbbf24" filter="url(#glow)" />
+    <circle cx="70" cy="-22" r="6" fill="#d97706" />
+
+    <!-- Rising chart bars popping out of the wallet -->
+    <rect x="-70" y="-140" width="22" height="85" rx="8" fill="url(#accentGrad)" filter="url(#glow)" />
+    <rect x="-35" y="-120" width="22" height="65" rx="8" fill="#38bdf8" />
+    <rect x="0" y="-100" width="22" height="45" rx="8" fill="#34d399" />
+  </g>
+</svg>
