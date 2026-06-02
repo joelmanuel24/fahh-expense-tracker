@@ -1,0 +1,546 @@
+{
+  "name": "Fam Expense Tracker",
+  "short_name": "Fam",
+  "description": "Premium multi-account offline expense tracker and KKB bill splitter PWA.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#584cf4",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "url": "./index.html?action=new-expense",
+      "description": "Record a new multi-item transaction instantly"
+    }
+  ]
+}
+
+        <button id="account-switcher-trigger" cla
+          <span id="active-account-name">Personal Account</span>
+          <svg viewBox="0 0 24 24" class="chevron-down-icon"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="month-selector">
+          <button id="prev-month-btn" class="icon-btn" aria-label="Previous Month">
+            <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          </button>
+          <span id="current-month-display" class="month-year-title">MAY 2026</span>
+          <button id="next-month-btn" class="icon-btn" aria-label="Next Month">
+            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="scroll-content">
+        <!-- Total Expenses Card -->
+        <div class="total-expenses-card" id="total-expenses-trigger">
+          <span class="card-label">TOTAL EXPENSES</span>
+          <div class="balance-display-row">
+            <span id="total-amount-display" class="currency-value">PHP 0.00</span>
+            <button id="balance-toggle-btn" class="icon-btn-tinted" aria-label="Toggle Balance Visibility">
+              <svg viewBox="0 0 24 24" id="eye-icon"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-
+            </button>
+          </div>
+          <span class="card-subtitle">THIS MONTH</span>
+        </div>
+
+        <!-- Categories Summary Grid -->
+        <div class="categories-section">
+          <div class="categories-grid" id="quick-categories-grid">
+            <!-- Dynamic Category buttons render here -->
+          </div>
+        </div>
+
+        <!-- Recent Expenses Section -->
+        <div class="recent-expenses-section">
+          <h2 class="section-title">RECENT EXPENSES</h2>
+          <div class="transactions-list" id="recent-expenses-list">
+            <!-- Dynamic Expenses render here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Floating Nav Navigation Panel -->
+      <nav class="bottom-nav">
+        <button class="nav-item active" id="nav-home-btn" aria-label="Home">
+          <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        </button>
+        <button class="fab-btn" id="nav-add-btn" aria-label="Add Expense">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+        <button class="nav-item" id="nav-settings-btn" aria-label="Settings">
+          <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </button>
+      </nav>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 2. EXPENSES OVERVIEW VIEW                    -->
+    <!-- ============================================ -->
+    <section id="overview-view" class="view">
+      <header class="view-header">
+        <button id="overview-back-btn" class="icon-btn" aria-label="Back">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <h1 class="view-title">Expenses</h1>
+        <button class="icon-btn" id="overview-menu-btn" aria-label="Menu">
+          <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2.01.9-2.01 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+        </button>
+      </header>
+
+      <div class="scroll-content">
+        <div class="overview-sub-header">
+          <span class="sub-section-title">OVERVIEW</span>
+          <div class="dropdown-filter-container">
+            <button id="overview-filter-btn" class="dropdown-badge-btn">
+              <span id="active-overview-filter">All</span>
+              <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div id="overview-filter-dropdown" class="dropdown-menu hidden">
+              <div class="dropdown-item active" data-filter="all">All</div>
+              <!-- Categories dynamically added here -->
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 3. NEW / EDIT EXPENSE VIEW                   -->
+    <!-- ============================================ -->
+    <section id="expense-form-view" class="view">
+      <header class="view-header">
+        <button id="form-back-btn" class="icon-btn" aria-label="Back">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <h1 class="view-title" id="form-title">New Expense</h1>
+        <button id="form-kkb-trigger" class="kkb-btn-action hidden">
+          <span class="kkb-glow">⚡ KKB!</span>
+        </button>
+      </header>
+
+      <div class="scroll-content padding-bottom-large">
+        <form id="expense-form" onsubmit="return false;">
+          
+          <!-- Vendor / Master Description -->
+          <div class="form-group">
+            <label for="form-group-description" class="input-label">Description / Store</label>
+            <div style="position: relative; width: 100%;">
+              <input type="text" id="form-group-description" placeholder="e.g. Mcdo, Walmart" required autocomplete="off" class="form-input">
+              <div class="autocomplete-dropdown hidden" id="group-autocomplete" style="top: 100%; left: 0; right: 0; margin-top: 6px;"></div>
+            </div>
+          </div>
+
+          <!-- Quick Actions Row: Date & Label Bubbles -->
+          <div class="badge-actions-row">
+            <button type="button" id="form-date-btn" class="badge-action-btn">
+              <svg viewBox="0 0 24 24" class="badge-icon"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+              <span id="form-date-text">Today</span>
+              <!-- Hidden native date picker -->
+              <input type="date" id="form-date-picker" class="hidden-date-picker">
+            </button>
+            
+            <button type="button" id="form-label-btn" class="badge-action-btn">
+              <svg viewBox="0 0 24 24" class="badge-icon"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 8.25c-.97 0-1.75-.78-1.75-1.75s.78-1.75 1.75-1.75 1.75.78 1.75 1.75S6.47 8.25 5.5 8.25z"/></svg>
+              <span id="form-labels-text">Label</span>
+            </button>
+          </div>
+
+          <!-- Payment Method Row -->
+          <div class="form-group flex-row-between">
+            <span class="payment-method-label">Payment Method:</span>
+            <div class="custom-select-wrapper">
+              <select id="form-payment-method" class="select-field">
+                <!-- Dynamically populated global payment methods -->
+              </select>
+              <svg viewBox="0 0 24 24" class="select-arrows"><path d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59-1.41-1.41-3.18 3.17z"/></svg>
+            </div>
+          </div>
+
+          <!-- Itemized Breakdown Section -->
+          <div class="items-breakdown-section">
+            <div class="items-header-row">
+              <span class="items-title">BREAKDOWN ITEMS</span>
+              <button type="button" id="add-item-row-btn" class="text-action-btn">
+                <span>+ Add Item</span>
+              </button>
+            </div>
+
+            <!-- Receipt Items Dynamic List -->
+            <div class="items-container" id="receipt-items-container">
+              <!-- Item rows populated here -->
+            </div>
+          </div>
+
+          <!-- Receipt Running Total Summary -->
+          <div class="receipt-running-total">
+            <span>RECEIPT TOTAL</span>
+            <span id="receipt-running-total-value" class="total-big
+          <div class="form-submit-footer">
+            <button type="button" id="submit-expense-btn" class="primary-action-btn">Add Expense</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 4. KKB SPLIT VIEW (SCREENSHOT RECEIPT)       -->
+    <!-- ============================================ -->
+    <section id="kkb-view" class="view">
+      <header class="view-header">
+        <button id="kkb-back-btn" class="icon-btn" aria-label="Back">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <h1 class="view-title">KKB!</h1>
+        <div style="width: 40px;"></div> <!-- Spacer -->
+      </header>
+
+      <div class="scroll-content padding-bottom-large">
+        <!-- Screenshot Receipt Slip Container -->
+        <div class="screenshot-wrapper">
+          <div class="split-slip-card" id="kkb-receipt-card">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              </div>
+                <span class="total-label">TOTAL BILL</span>
+                <span id="slip-total-amount" class="total-val">PHP 0.00</span>
+              </div>
+              
+              <div class="slip-footer-center">
+                <span>Paid via <strong id="slip-payment-method">Cash</strong></span>
+                <span class="footer-tagline">Split powered by Fam Tracker ⚡</span>
+              </div>
+            </div>
+
+            <div class="rip-edge-bottom"></div>
+          </div>
+        </div>
+          <div class="qrs-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase;">⚡ Attach Payment QRs</span>
+            <label class="switch-toggle" style="transform: scale(0.85);">
+              <input type="checkbox" id="kkb-qrs-toggle-visibility" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div id="kkb-attached-qrs-list" class="attached-qrs-grid">
+          </div>
+        </div>
+
+        <!-- KKB Interactive Actions -->
+        <div class="kkb-utility-container">
+          <button id="kkb-copy-text-btn" class="utility-row-btn">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            <span>Copy Text Summary</span>
+          </button>
+          
+          <button id="kkb-share-btn" class="utility-row-btn primary-tint">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.8 2.04.8 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
+            <span>Share Split Link</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 5. LABELS VIEW                               -->
+    <!-- ============================================ -->
+    <section id="labels-view" class="view">
+      <header class="view-header">
+        <button id="labels-back-btn" class="icon-btn" aria-label="Back">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <h1 class="view-title">Labels</h1>
+        <div style="width: 40px;"></div> <!-- Spacer -->
+      </header>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <input type="text" id="new-category-name-input" placeholder="e.g. Health" class="settings-input">
+            <button id="add-category-btn" class="accent-icon-btn">+</button>
+          </div>
+        </div>
+
+        <!-- Section: Suggestions & Geolocation -->
+        <div class="settings-card flex-row-between">
+          <div>
+            <h2 class="settings-card-title" style="margin-bottom: 4px;">Enable Location Suggestions</h2>
+            <p class="settings-card-desc">Scopes autocompletes based on physical proximity</p>
+          </div>
+          <label class="switch-toggle">
+            <input type="checkbox" id="location-toggle-checkbox">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Section: Utilities / Reset -->
+        <div class="settings-card">
+          <h2 class="settings-card-title">Data Utilities</h2>
+          <div class="settings-utilities-grid">
+            <button id="export-data-btn" class="utility-action-btn-tinted">Export JSON</button>
+            <button id="clear-all-data-btn" class="utility-action-btn-danger">Reset Database</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Floating Nav Navigation Panel -->
+      <nav class="bottom-nav">
+        <button class="nav-item" id="settings-home-btn" aria-label="Home">
+          <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        </button>
+        <button class="fab-btn" id="settings-add-btn" aria-label="Add Expense">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+        <button class="nav-item active" id="settings-settings-btn" aria-label="Settings">
+          <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <button type="button" class="calc-btn number" data-val="2">2</button>
+        <button type="button" class="calc-btn number" data-val="3">3</button>
+        <button type="button" class="calc-btn operator" data-val="-">-</button>
+
+        <button type="button" class="calc-btn number" data-val="0">0</button>
+        <button type="button" class="calc-btn number" data-val=".">.</button>
+        <button type="button" class="calc-btn backspace" data-val="backspace">⌫</button>
+        <button type="button" class="calc-btn operator" data-val="+">+</button>
+
+        <button type="button" class="calc-btn clear double-width" data-val="C">C</button>
+        <button type="button" class="calc-btn evaluate" data-val="=">=</button>
+        <button type="button" class="calc-btn confirm primary" data-val="confirm">✓ Confirm</button>
+      </div>
+    </div>
+        <button type="button" class="calc-btn number" data-val="3">3</button>
+        <button type="button" class="calc-btn operator" data-val="-">-</button>
+
+        <button type="button" class="calc-btn number" data-val="0">0</button>
+        <button type="button" class="calc-btn number" data-val=".">.</button>
+        <button type="button" class="calc-btn backspace" data-val="backspace">⌫</button>
+        <button type="button" class="calc-btn operator" data-val="+">+</button>
+
+        <button type="button" class="calc-btn clear double-width" data-val="C">C</button>
+        <button type="button" class="calc-btn evaluate" data-val="=">=</button>
+        <button type="button" class="calc-btn confirm primary" data-val="confirm">✓ Confirm</button>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 8. BOTTOM SWITCHER SHEET (OVERLAY)           -->
+    <!-- ============================================ -->
+    <div id="accounts-sheet" class="bottom-sheet-overlay hidden">
+      <div class="sheet-scrim" id="accounts-sheet-scrim"></div>
+      <div class="sheet-content-wrapper">
+        <div class="sheet-drag-indicator"></div>
+        <h3 class="sheet-title">Switch Account</h3>
+        <div class="sheet-accounts-list" id="sheet-accounts-container">
+          <!-- Active accounts with radio checks -->
+        </div>
+        <div class="sheet-footer-actions">
+          <button id="sheet-manage-btn" class="sheet-flat-action-btn">Manage Accounts</button>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- End App Container -->
+
+  <!-- Load Master Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <div class="sheet-accounts-list" id="sheet-accounts-container">
+          <!-- Active accounts with radio checks -->
+        </div>
+        <div class="sheet-footer-actions">
+          <button id="sheet-manage-btn" class="sheet-flat-action-btn">Manage Accounts</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 9. KKB MARK PAID MODAL (OVERLAY)             -->
+    <!-- ============================================ -->
+    <div id="kkb-paid-modal" class="bottom-sheet-overlay hidden">
+      <div class="sheet-scrim" id="kkb-paid-scrim"></div>
+      <div class="sheet-content-wrapper">
+        <div class="sheet-drag-indicator"></div>
+        <h3 class="sheet-title" id="kkb-modal-title">alice's split</h3>
+        <p class="sheet-subtitle" id="kkb-modal-subtitle" style="font-family: 'Space Mono', monospace; font-size: 18px; font-weight: 700; color: var(--color-primary); margin-top: 4px; margin-bottom: 16px;">PHP 0.00</p>
+        
+        <div class="kkb-modal-actions-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px; width: 100%;">
+          <button id="kkb-mark-paid-btn" class="primary-action-btn" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); width: 100%;">Mark as Paid</button>
+          <button id="kkb-mark-unpaid-btn" class="utility-action-btn-tinted" style="width: 100%;">Mark as Unpaid</button>
+          <button id="kkb-modal-cancel-btn" class="utility-action-btn-tinted" style="background: rgba(255,255,255,0.06); color: #fff; width: 100%;">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- End App Container -->
+
+  <!-- Load Master Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

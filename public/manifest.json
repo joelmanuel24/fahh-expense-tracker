@@ -1,11 +1,11 @@
 {
   "name": "Fahh! Expense Tracker",
-  "short_name": "Fam",
+  "short_name": "Fahh!",
   "description": "Premium multi-account offline expense tracker and KKB bill splitter PWA.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#121212",
-  "theme_color": "#584cf4",
+  "theme_color": "#863bff",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Fahh! Expense Tracker SPA Mobile-Frame & Slide Animations
+   ========================================================================== */
+
+/* Main App Wrapper simulating native mobile viewport constraints */
+.app-container {
+  max-width: 480px;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile browsers */
+  margin: 0 auto;
+  background-color: var(--bg-app);
+  box-shadow: 0 0 80px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Base style for every screen/view */
+.view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-app);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  will-change: transform;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+/* Native-like iOS Page Transition States */
+.view.state-offscreen {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+.view.state-behind {
+  transform: translateX(-20%);
+  pointer-events: none;
+  opacity: 0.7; /* Gentle dimming when covered */
+}
+
+.view.state-active {
+  transform: translateX(0);
+  z-index: 20;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* Viewport scrolling controls */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 20px;
+}
+
+/* Standard global padding modifier */
+.padding-bottom-large {
+  padding-bottom: 120px !important;
+}
+
+/* Position PWA floating bottom nav consistently at the base of the frame with floating margins */
+.bottom-nav {
+  position: absolute;
+  bottom: 24px;
+  left: 20px;
+  right: 20px;
+  width: calc(100% - 40px);
+  z-index: 30;
+  box-sizing: border-box;
+}
+
+/* Promote active view container z-index to sit on top of bottom navigation when bottom sheet modal is open */
+.app-container.modal-active .view.state-active {
+  z-index: 40;
+}
