@@ -325,5 +325,67 @@ describe('Expenses Zustand Store & Selectors', () => {
       expect(finalState.expenseGroups.length).toBe(0);
       expect(finalState.expenseItems.length).toBe(0);
     });
+
+    it('should generate a unique ID for placeholder items and prevent overwriting between successive new transactions', async () => {
+      const store = useExpensesStore.getState();
+
+      // Transaction 1: Initial item placeholder ID is 'new_init'
+      const group1: ExpenseGroup = {
+        id: 'g_tx_1',
+        accountId: 'acc_1',
+        description: 'Store 1',
+        date: '2025-06-05',
+        paymentMethod: 'Cash',
+        labels: []
+      };
+      
+      const item1: ExpenseItem = {
+        id: 'new_init',
+        groupId: 'g_tx_1',
+        description: 'Milk',
+        amount: 50,
+        category: 'Food'
+      };
+
+      await store.saveExpenseGroup(group1, [item1], null);
+
+      // Verify Transaction 1 item is saved with a fresh random ID (e.g. starts with 'item_' and is NOT 'new_init')
+      const stateAfterTx1 = useExpensesStore.getState();
+      expect(stateAfterTx1.expenseItems.length).toBe(1);
+      const savedItem1 = stateAfterTx1.expenseItems[0];
+      expect(savedItem1.id).not.toBe('new_init');
+      expect(savedItem1.id.startsWith('item_')).toBe(true);
+
+      // Transaction 2: Initial item placeholder ID is ALSO 'new_init'
+      const group2: ExpenseGroup = {
+        id: 'g_tx_2',
+        accountId: 'acc_1',
+        description: 'Store 2',
+        date: '2025-06-06',
+        paymentMethod: 'Cash',
+        labels: []
+      };
+
+      const item2: ExpenseItem = {
+        id: 'new_init',
+        groupId: 'g_tx_2',
+        description: 'Bread',
+        amount: 40,
+        category: 'Food'
+      };
+
+      await store.saveExpenseGroup(group2, [item2], null);
+
+      // Verify that BOTH items co-exist without collision, and neither got overwritten or deleted
+      const stateAfterTx2 = useExpensesStore.getState();
+      expect(stateAfterTx2.expenseGroups.length).toBe(2);
+      expect(stateAfterTx2.expenseItems.length).toBe(2);
+
+      const savedItem2 = stateAfterTx2.expenseItems.find(i => i.groupId === 'g_tx_2')!;
+      expect(savedItem2).toBeDefined();
+      expect(savedItem2.id).not.toBe('new_init');
+      expect(savedItem2.id).not.toBe(savedItem1.id); // Must be different unique IDs!
+      expect(savedItem2.id.startsWith('item_')).toBe(true);
+    });
   });
 });

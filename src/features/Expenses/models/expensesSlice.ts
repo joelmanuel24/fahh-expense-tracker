@@ -70,7 +70,12 @@ export const createExpensesSlice: StateCreator<
     }
 
     for (const item of items) {
-      await db.put('expense_items', item);
+      const itemRecord: ExpenseItem = {
+        ...item,
+        id: item.id && !item.id.startsWith('new_') ? item.id : `item_${Math.random().toString(36).substring(2, 9)}`,
+        groupId: group.id
+      };
+      await db.put('expense_items', itemRecord);
     }
 
     await get().loadExpensesData(group.accountId);

@@ -45,7 +45,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   
   // Breakdown items state
   const [items, setItems] = useState<Partial<ExpenseItem>[]>([
-    { id: '1', description: '', amount: 0, category: 'Others', splitUser: '' }
+    { id: 'new_init', description: '', amount: 0, category: 'Others', splitUser: '' }
   ]);
 
   // Options & past transaction states fetched from settings and expenses stores
@@ -185,7 +185,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         const matched = categories.find(c => c.name.toLowerCase() === quickCat.toLowerCase());
         if (matched) {
           setItems([
-            { id: '1', description: '', amount: 0, category: matched.name, splitUser: '' }
+            { id: 'new_init', description: '', amount: 0, category: matched.name, splitUser: '' }
           ]);
         }
       }
@@ -435,7 +435,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }
 
     const itemRecords: ExpenseItem[] = items.map((row) => ({
-      id: row.id && !row.id.startsWith('new_') ? row.id : `item_${Math.random().toString(36).substring(2, 9)}`,
+      id: row.id || '',
       groupId: groupId,
       description: (row.description || '').trim(),
       amount: parseFloat(row.amount as any) || 0,
