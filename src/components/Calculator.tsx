@@ -20,13 +20,12 @@ export const Calculator: React.FC<CalculatorProps> = ({ isOpen, initialValue, on
     }
   }, [isOpen, initialValue]);
 
-  // Safe mathematical parser
+  // Safe mathematical parser supporting basic operations and parentheses
   const evaluateFormula = (expr: string): number => {
-    // Only allow digits, decimals, and basic math operators
-    const sanitized = expr.replace(/[^0-9.+\-*/]/g, '');
+    // Only allow digits, decimals, basic operators, and parentheses
+    const sanitized = expr.replace(/[^0-9.+\-*/()]/g, '');
     if (!sanitized) return 0;
     try {
-      // Safe execution of mathematical expression since it is fully sanitized
       const evalFn = new Function(`return ${sanitized}`);
       const res = evalFn();
       return typeof res === 'number' && isFinite(res) ? res : 0;
@@ -40,10 +39,36 @@ export const Calculator: React.FC<CalculatorProps> = ({ isOpen, initialValue, on
 
     if (val === 'C') {
       nextFormula = '0';
-    } else if (val === 'backspace') {
-      nextFormula = formula.slice(0, -1);
-      if (nextFormula === '' || nextFormula === '-') {
-        nextFormula = '0';
+    } else if (val === '()') {
+      const openParenthesesCount = (formula.match(/\(/g) || []).length;
+      const closeParenthesesCount = (formula.match(/\)/g) || []).length;
+      const lastChar = formula.slice(-1);
+      
+      if (openParenthesesCount > closeParenthesesCount && !['+', '-', '*', '/'].includes(lastChar) && lastChar !== '(') {
+        nextFormula = formula + ')';
+      } else {
+        if (formula === '0') {
+          nextFormula = '(';
+        } else {
+          nextFormula = formula + '(';
+        }
+      }
+    } else if (val === '%') {
+      const lastChar = formula.slice(-1);
+      if (/[0-9)]/.test(lastChar)) {
+        nextFormula = formula + '/100';
+      }
+    } else if (val === '+/-') {
+      // Toggle negative/positive sign of the last numeric chunk
+      const match = formula.match(/(-?[0-9.]+)$/);
+      if (match) {
+        const lastNum = match[1];
+        const prevPart = formula.slice(0, -lastNum.length);
+        if (lastNum.startsWith('-')) {
+          nextFormula = prevPart + lastNum.slice(1);
+        } else {
+          nextFormula = prevPart + '-' + lastNum;
+        }
       }
     } else if (val === '=') {
       const finalRes = evaluateFormula(formula);
@@ -68,7 +93,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ isOpen, initialValue, on
 
     setFormula(nextFormula);
     
-    // Live update result preview (evaluate up to last number)
+    // Live update result preview
     let tempExpr = nextFormula;
     if (['+', '-', '*', '/'].includes(tempExpr.slice(-1))) {
       tempExpr = tempExpr.slice(0, -1);
@@ -93,30 +118,33 @@ export const Calculator: React.FC<CalculatorProps> = ({ isOpen, initialValue, on
         </div>
       </div>
 
-      {/* 4x5 Keypad Grid */}
+      {/* 5x4 Keypad Grid Layout matching user's layout design reference */}
       <div className="calc-grid">
+        <button type="button" className="calc-btn clear" onClick={() => handleKeyPress('C')}>C</button>
+        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('()')}>()</button>
+        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('%')}>%</button>
+        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('/')}>÷</button>
+
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('7')}>7</button>
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('8')}>8</button>
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('9')}>9</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('/')}>/</button>
+        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('*')}>×</button>
 
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('4')}>4</button>
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('5')}>5</button>
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('6')}>6</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('*')}>*</button>
+        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('-')}>−</button>
 
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('1')}>1</button>
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('2')}>2</button>
         <button type="button" className="calc-btn number" onClick={() => handleKeyPress('3')}>3</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('-')}>-</button>
-
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('0')}>0</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('.')}>.</button>
-        <button type="button" className="calc-btn backspace" onClick={() => handleKeyPress('backspace')}>⌫</button>
         <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('+')}>+</button>
 
-        <button type="button" className="calc-btn clear double-width" onClick={() => handleKeyPress('C')}>C</button>
+        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('+/-')}>+/-</button>
+        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('0')}>0</button>
+        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('.')}>.</button>
         <button type="button" className="calc-btn evaluate" onClick={() => handleKeyPress('=')}>=</button>
+
         <button type="button" className="calc-btn confirm primary" onClick={handleConfirm}>✓ Confirm</button>
       </div>
     </div>

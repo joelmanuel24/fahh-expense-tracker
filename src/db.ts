@@ -1,14 +1,51 @@
 import { Account, ExpenseGroup, ExpenseItem, Category, Label, PaymentMethod } from './types';
 
+export type MigrationFn = (db: IDBDatabase, transaction: IDBTransaction) => void;
+
+export const migrations: Record<number, MigrationFn> = {
+  1: (db) => {
+    if (!db.objectStoreNames.contains('accounts')) {
+      db.createObjectStore('accounts', { keyPath: 'id' });
+    }
+    if (!db.objectStoreNames.contains('expense_groups')) {
+      const store = db.createObjectStore('expense_groups', { keyPath: 'id' });
+      store.createIndex('accountId', 'accountId', { unique: false });
+    }
+    if (!db.objectStoreNames.contains('expense_items')) {
+      const store = db.createObjectStore('expense_items', { keyPath: 'id' });
+      store.createIndex('groupId', 'groupId', { unique: false });
+    }
+    if (!db.objectStoreNames.contains('categories')) {
+      const store = db.createObjectStore('categories', { keyPath: 'id' });
+      store.createIndex('accountId', 'accountId', { unique: false });
+    }
+    if (!db.objectStoreNames.contains('labels')) {
+      const store = db.createObjectStore('labels', { keyPath: 'id' });
+      store.createIndex('accountId', 'accountId', { unique: false });
+    }
+    if (!db.objectStoreNames.contains('payment_methods')) {
+      db.createObjectStore('payment_methods', { keyPath: 'id' });
+    }
+    if (!db.objectStoreNames.contains('settings')) {
+      db.createObjectStore('settings', { keyPath: 'key' });
+    }
+  },
+  2: (_db, _transaction) => {
+    // Migration v2: Sample schema migration logic.
+    // This automatically runs for existing users upgrading to v2.
+    console.log('IndexedDB database schema successfully migrated to v2!');
+  }
+};
+
 class StrongDB {
-  private dbName = 'FamExpenseTracker';
-  private dbVersion = 1;
+  private dbName = 'FahhExpenseTracker';
+  private dbVersion = 2;
   private db: IDBDatabase | null = null;
 
   public init(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       if (this.db) return resolve(this.db);
-      
+
       const request = indexedDB.open(this.dbName, this.dbVersion);
 
       request.onerror = () => reject(request.error);
@@ -17,33 +54,19 @@ class StrongDB {
         resolve(request.result);
       };
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         const db = request.result;
+        const transaction = request.transaction!;
+        const oldVersion = event.oldVersion;
+        const newVersion = event.newVersion || this.dbVersion;
 
-        if (!db.objectStoreNames.contains('accounts')) {
-          db.createObjectStore('accounts', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('expense_groups')) {
-          const store = db.createObjectStore('expense_groups', { keyPath: 'id' });
-          store.createIndex('accountId', 'accountId', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('expense_items')) {
-          const store = db.createObjectStore('expense_items', { keyPath: 'id' });
-          store.createIndex('groupId', 'groupId', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('categories')) {
-          const store = db.createObjectStore('categories', { keyPath: 'id' });
-          store.createIndex('accountId', 'accountId', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('labels')) {
-          const store = db.createObjectStore('labels', { keyPath: 'id' });
-          store.createIndex('accountId', 'accountId', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('payment_methods')) {
-          db.createObjectStore('payment_methods', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('settings')) {
-          db.createObjectStore('settings', { keyPath: 'key' });
+        console.log(`IndexedDB Upgrade Needed: from v${oldVersion} to v${newVersion}`);
+
+        for (let v = oldVersion + 1; v <= newVersion; v++) {
+          if (migrations[v]) {
+            console.log(`Running database migration to v${v}...`);
+            migrations[v](db, transaction);
+          }
         }
       };
     });
@@ -119,7 +142,7 @@ class StrongDB {
   // Strong helper to seed all default data if database is empty
   public async seedDefaultDatabase(): Promise<string> {
     await this.init();
-    
+
     // 1. Seed default personal account if none exists
     const accounts = await this.getAll<Account>('accounts');
     let activeId = '';
@@ -129,7 +152,7 @@ class StrongDB {
       const defaultAccount: Account = { id: activeId, name: 'Personal Account' };
       await this.put('accounts', defaultAccount);
       await this.put('settings', { key: 'activeAccountId', value: activeId });
-      
+
       // 2. Seed Default Global Payment Methods
       const defaultPayments: PaymentMethod[] = [
         { id: 'pm_cash', name: 'Cash' },
@@ -206,7 +229,7 @@ class StrongDB {
         { id: 'category_grid', name: 'Category Grid', visible: true },
         { id: 'recent_expenses', name: 'Recent Expenses', visible: true }
       ];
-      
+
       if (widgetsRecord && widgetsRecord.value && Array.isArray(widgetsRecord.value)) {
         const savedList = widgetsRecord.value;
         const missing = defaultWidgets.filter(dw => !savedList.some(sw => sw.id === dw.id));

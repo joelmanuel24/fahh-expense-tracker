@@ -13,6 +13,7 @@ export interface ExpenseGroup {
   paidUsers?: string[]; // array of split names marked as paid
   lat?: number;         // geo-tag coordinates for location suggestions
   lng?: number;
+  receiptImage?: string; // base64 encoded receipt image
 }
 
 export interface ExpenseItem {

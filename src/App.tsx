@@ -1,16 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from './db';
 import { BottomNav } from './components/BottomNav';
-import { Dashboard } from './views/Dashboard';
-import { ExpensesOverview } from './views/ExpensesOverview';
-import { ExpenseForm } from './views/ExpenseForm';
-import { SplitReceipt } from './components/SplitReceipt';
-import { Settings } from './views/Settings';
+import { Dashboard } from './features/Dashboard/pages/Index';
+import { ExpensesOverview } from './features/Expenses/pages/Overview';
+import { ExpenseForm } from './features/Expenses/pages/Index';
+import { SplitReceipt } from './features/Expenses/components/SplitReceipt';
+import { Settings } from './features/Settings/pages/Index';
 import './App.css';
 
 function App() {
   const [activeAccountId, setActiveAccountId] = useState<string>('');
-  const [activeMonth, setActiveMonth] = useState<Date>(new Date());
+  const [activeMonth, setActiveMonth] = useState<Date>(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
+  
+  const lastMonthChangeTime = useRef<number>(0);
   
   // Navigation Stack Router State
   const [historyStack, setHistoryStack] = useState<string[]>(['dashboard']);
@@ -71,6 +77,16 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Reconcile and clear editing/viewing states when exiting their respective sub-views
+  useEffect(() => {
+    if (!historyStack.includes('expense-form')) {
+      setEditingGroupId(null);
+    }
+    if (!historyStack.includes('split-receipt')) {
+      setViewingGroupId(null);
+    }
+  }, [historyStack]);
+
   // Centralized Navigation Pushes
   const handleNavigate = (viewId: string, queryParams?: string) => {
     // If navigating to detail screens, push into URL query parameters
@@ -102,8 +118,15 @@ function App() {
   };
 
   const handleMonthOffset = (offset: number) => {
+    const now = Date.now();
+    if (now - lastMonthChangeTime.current < 300) {
+      return;
+    }
+    lastMonthChangeTime.current = now;
+
     setActiveMonth((prev) => {
       const next = new Date(prev);
+      next.setDate(1); // Crucial: Set day to 1st first to prevent rollover overflow bug on the 31st of a month (e.g. May 31 + 1 month -> June 31 -> July 1)
       next.setMonth(next.getMonth() + offset);
       return next;
     });
@@ -168,9 +191,10 @@ function App() {
           onEditExpense={handleEditExpense}
           onViewSplit={handleViewSplit}
           onModalToggle={(open) => setIsModalActive(open)}
+          isActive={activeView === 'dashboard'}
         />
       </section>
-
+ 
       {/* 2. Expenses Overview View */}
       {historyStack.includes('overview') && (
         <section className={getViewClass('overview')}>
@@ -180,6 +204,8 @@ function App() {
             onNavigate={handleNavigate}
             onEditExpense={handleEditExpense}
             onViewSplit={handleViewSplit}
+            onModalToggle={(open) => setIsModalActive(open)}
+            isActive={activeView === 'overview'}
           />
         </section>
       )}
@@ -213,6 +239,7 @@ function App() {
           <Settings
             activeAccountId={activeAccountId}
             onNavigate={handleNavigate}
+            onModalToggle={(open) => setIsModalActive(open)}
           />
         </section>
       )}

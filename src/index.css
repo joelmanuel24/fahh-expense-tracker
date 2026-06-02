@@ -311,6 +311,7 @@ body {
   border-radius: 16px;
   padding: 6px 10px;
   color: var(--text-primary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   font-weight: 700;
   display: flex;
@@ -360,6 +361,13 @@ body {
   background: var(--color-primary);
 }
 
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
 .card-label {
   font-size: 11px;
   font-weight: 700;
@@ -371,7 +379,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 8px 0;
+  margin-top: 6px;
+  margin-bottom: 0;
 }
 
 .currency-value {
@@ -637,16 +646,16 @@ body {
   bottom: 24px;
   left: 20px;
   right: 20px;
-  height: 68px;
+  height: 48px;
   background-color: rgba(30, 30, 30, 0.8);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-light);
-  border-radius: 34px;
+  border-radius: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 24px;
   box-shadow: var(--shadow-premium);
   z-index: 100;
 }
@@ -655,8 +664,8 @@ body {
   background: none;
   border: none;
   color: var(--text-secondary);
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -689,15 +698,15 @@ body {
   justify-content: center;
   cursor: pointer;
   box-shadow: var(--shadow-glow);
-  transform: translateY(-16px);
+  transform: none;
   transition: var(--transition-spring);
 }
 .fab-btn:hover {
   background-color: var(--color-primary-hover);
-  transform: translateY(-18px) scale(1.05);
+  transform: scale(1.05);
 }
 .fab-btn:active {
-  transform: translateY(-16px) scale(0.95);
+  transform: scale(0.95);
   box-shadow: none;
 }
 .fab-btn svg {
@@ -903,15 +912,144 @@ body {
   position: relative;
   transition: var(--transition-smooth);
 }
+.badge-action-btn:hover {
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--text-secondary);
+}
 .badge-action-btn:active {
   transform: scale(0.94);
+}
+.badge-action-btn-danger {
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  color: var(--color-danger) !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
+}
+.badge-action-btn-danger:hover {
+  background-color: var(--color-danger-tinted) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+}
+.badge-action-btn-danger .badge-icon {
+  stroke: var(--color-danger) !important;
 }
 .badge-icon {
   width: 16px;
   height: 16px;
   fill: none;
   stroke: var(--text-secondary);
+  transition: var(--transition-smooth);
 }
+
+/* ==========================================================================
+   Vertical Ellipsis & Context Menu Dropdown
+   ========================================================================== */
+.context-menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.more-actions-btn {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition-smooth);
+}
+.more-actions-btn:hover {
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+.more-actions-btn:active {
+  transform: scale(0.92);
+}
+.more-actions-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  transition: var(--transition-smooth);
+}
+
+.sheet-menu-item {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  transition: var(--transition-smooth) !important;
+}
+.sheet-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.sheet-menu-item:active {
+  transform: scale(0.98) !important;
+}
+.sheet-menu-item.danger:hover {
+  background-color: var(--color-danger-tinted) !important;
+}
+
+.sheet-menu-divider {
+  height: 1px;
+  background-color: var(--border-light);
+  margin: 6px 16px;
+}
+
+.context-menu-dropdown {
+  position: absolute;
+  bottom: 46px; /* Positioned directly above the button */
+  right: 0;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-premium);
+  min-width: 110px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  animation: contextMenuFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.context-menu-item {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  transition: var(--transition-smooth);
+}
+.context-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.context-menu-item.danger {
+  color: var(--color-danger);
+}
+.context-menu-item.danger:hover {
+  background-color: var(--color-danger-tinted);
+}
+
 
 .hidden-date-picker {
   position: absolute;
@@ -1030,6 +1168,8 @@ body {
   font-weight: 600;
   padding: 4px;
   width: 100%;
+  height: 28px;
+  box-sizing: border-box;
 }
 .item-input:focus {
   outline: none;
@@ -1106,6 +1246,10 @@ body {
 }
 .assignee-input:focus {
   outline: none;
+}
+.assignee-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .assignee-input::placeholder {
   color: var(--text-muted);
@@ -1669,6 +1813,7 @@ body {
   display: inline-block;
   width: 44px;
   height: 24px;
+  flex-shrink: 0;
 }
 .switch-toggle input {
   opacity: 0;
@@ -1910,7 +2055,7 @@ input:checked + .switch-slider:before {
   align-self: center;
 }
 .sheet-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 16px;
   font-weight: 700;
 }
@@ -1969,6 +2114,17 @@ input:checked + .switch-slider:before {
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+@keyframes toastSlideUpScale {
+  from {
+    transform: translateX(-50%) translateY(120%) scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes popIn {
@@ -2115,3 +2271,59 @@ input:checked + .switch-slider:before {
   fill: none;
   stroke: currentColor;
 }
+
+/* Payment Method Trigger Button Styles */
+.payment-method-trigger-btn {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  min-width: 120px;
+  width: auto;
+  gap: 8px;
+  box-sizing: border-box;
+  transition: var(--transition-smooth);
+}
+
+.payment-method-trigger-btn:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(88, 76, 244, 0.15);
+}
+
+.payment-method-trigger-btn .chevron-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.settings-edit-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary-light);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  text-decoration: underline;
+  transition: opacity 0.2s ease;
+}
+
+.settings-edit-link:hover {
+  opacity: 0.8;
+}
+
+.settings-edit-link:active {
+  opacity: 0.6;
+}
+
+
