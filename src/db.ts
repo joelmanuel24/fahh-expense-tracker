@@ -148,6 +148,16 @@ class StrongDB {
     });
   }
 
+  public clearTable(storeName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.getStore(storeName, 'readwrite').then((store) => {
+        const request = store.clear();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      }).catch(reject);
+    });
+  }
+
   // Cascading deletes - Deletes a group and all its corresponding items
   public async deleteExpenseGroup(groupId: string): Promise<void> {
     await this.delete('expense_groups', groupId);
@@ -215,30 +225,6 @@ class StrongDB {
           await this.put('labels', lbl);
         }
 
-        // 5. Seed default Sample Transaction ("Mcdo Split Bill")
-        const sampleGroupId = crypto.randomUUID();
-        const sampleGroup: ExpenseGroup = {
-          id: sampleGroupId,
-          accountId: activeId,
-          description: 'Mcdo',
-          date: new Date().toISOString().split('T')[0],
-          paymentMethod: 'Cash',
-          labels: ['Food'],
-          paidUsers: ['Bob'], // Seed Bob as already paid his split
-          lat: 14.4445,       // Seed default latitude
-          lng: 121.0021       // Seed default longitude
-        };
-        await this.put('expense_groups', sampleGroup);
-
-        const sampleItems: ExpenseItem[] = [
-          { id: crypto.randomUUID(), groupId: sampleGroupId, description: 'Burger', amount: 70.00, category: 'Food', splitUser: 'Alice' },
-          { id: crypto.randomUUID(), groupId: sampleGroupId, description: 'Fries', amount: 31.00, category: 'Food', splitUser: 'Bob' },
-          { id: crypto.randomUUID(), groupId: sampleGroupId, description: 'Soda', amount: 25.00, category: 'Food', splitUser: 'Me' }
-        ];
-        for (const item of sampleItems) {
-          await this.put('expense_items', item);
-        }
-
         // 6. Set initial default settings keys
         await this.put('settings', { key: 'locationSuggestEnabled', value: false });
         await this.put('settings', { key: 'kkbQrs', value: [] });
@@ -253,7 +239,7 @@ class StrongDB {
         const defaultWidgets = [
           { id: 'total_expenses', name: 'Total Expenses', visible: true },
           { id: 'owe_totals', name: 'Owed Balances', visible: true },
-          { id: 'categories', name: 'Category List', visible: true },
+          { id: 'categories', name: 'Category List', visible: false },
           { id: 'category_grid', name: 'Category Grid', visible: true },
           { id: 'recent_expenses', name: 'Recent Expenses', visible: true }
         ];

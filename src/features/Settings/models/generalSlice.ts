@@ -35,7 +35,7 @@ export const createGeneralSlice: StateCreator<
     const defaultWidgets = [
       { id: 'total_expenses', name: 'Total Expenses', visible: true },
       { id: 'owe_totals', name: 'Owed Balances', visible: true },
-      { id: 'categories', name: 'Category List', visible: true },
+      { id: 'categories', name: 'Category List', visible: false },
       { id: 'category_grid', name: 'Category Grid', visible: true },
       { id: 'recent_expenses', name: 'Recent Expenses', visible: true }
     ];

@@ -54,6 +54,48 @@ function App() {
     setSyncError(null);
 
     try {
+      // Check if user has existing account data in Supabase
+      const { data: serverAccounts, error: checkErr } = await supabase
+        .from('accounts')
+        .select('id')
+        .eq('owner_id', targetUser.id)
+        .limit(1);
+
+      if (!checkErr && serverAccounts && serverAccounts.length > 0) {
+        const confirmReplace = confirm(
+          "We found existing online data for your account.\n\n" +
+          "Would you like to clear this device's local offline/seeded data and download your online data instead?\n\n" +
+          "Click OK to REPLACE local data with your online data.\n" +
+          "Click Cancel to MERGE local data with your online data."
+        );
+
+        if (confirmReplace) {
+          // Clear all local database tables
+          await db.clearTable('accounts');
+          await db.clearTable('expense_groups');
+          await db.clearTable('expense_items');
+          await db.clearTable('categories');
+          await db.clearTable('labels');
+          await db.clearTable('payment_methods');
+          await db.clearTable('settings');
+          await db.clearTable('sync_queue');
+          await db.clearTable('credits');
+
+          // Pull all server updates
+          await pullUpdatesFromServer(true); // Force full reconciliation
+
+          // Mark first sync completed
+          await db.put('settings', { key: `firstSyncCompleted_${targetUser.id}`, value: true });
+
+          setSyncStatus('completed');
+          useSettingsStore.getState().setIsSyncing(false);
+          
+          // Reload page to refresh all active memory states cleanly
+          window.location.reload();
+          return;
+        }
+      }
+
       // 1. Fetch all local accounts from IndexedDB
       const localAccounts = await db.getAll<Account>('accounts');
       if (localAccounts.length === 0) {
