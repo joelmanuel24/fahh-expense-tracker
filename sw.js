@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fahh-expense-tracker-v2';
+const CACHE_NAME = 'fahh-expense-tracker-v0.0.2';
 const PRECACHE_ASSETS = [
   './',
   './index.html',
