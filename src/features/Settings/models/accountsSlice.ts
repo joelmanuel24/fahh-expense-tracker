@@ -3,6 +3,7 @@ import { SettingsStore, AccountsSlice } from './types';
 import { db } from '../../../db';
 import { sortItemsByIds } from '../utils/layoutLogic';
 import { Account, Category } from '../../../types';
+import { addToSyncQueue, processSyncQueue } from '../../../utils/syncEngine';
 
 export const createAccountsSlice: StateCreator<
   SettingsStore,
@@ -23,9 +24,11 @@ export const createAccountsSlice: StateCreator<
   handleAddAccount: async () => {
     const { newAccountName } = get();
     if (!newAccountName.trim()) return;
-    const newId = `acc_${Date.now()}`;
+    const newId = crypto.randomUUID();
     const newAcc: Account = { id: newId, name: newAccountName.trim() };
     await db.put('accounts', newAcc);
+    await addToSyncQueue('accounts', 'upsert', newId, newAcc);
+    processSyncQueue();
     set({ newAccountName: '' });
     await get().loadAccounts();
   },
@@ -40,6 +43,8 @@ export const createAccountsSlice: StateCreator<
     if (newName !== null && newName.trim() !== '') {
       const updated = { ...acc, name: newName.trim() };
       await db.put('accounts', updated);
+      await addToSyncQueue('accounts', 'upsert', updated.id, updated);
+      processSyncQueue();
       await get().loadAccounts();
     }
   },
@@ -49,6 +54,7 @@ export const createAccountsSlice: StateCreator<
     if (!deleteTargetAccountId) return;
     const id = deleteTargetAccountId;
     await db.delete('accounts', id);
+    await addToSyncQueue('accounts', 'delete', id, null);
     
     // Cascading deletes of groups and items
     const allGroups = await db.getGroupedByIndex<any>('expense_groups', 'accountId', id);
@@ -58,10 +64,18 @@ export const createAccountsSlice: StateCreator<
 
     // Cascading deletes of scoped categories & labels
     const cats = await db.getGroupedByIndex<Category>('categories', 'accountId', id);
-    for (const c of cats) await db.delete('categories', c.id);
+    for (const c of cats) {
+      await db.delete('categories', c.id);
+      await addToSyncQueue('categories', 'delete', c.id, null);
+    }
 
     const lbls = await db.getGroupedByIndex<any>('labels', 'accountId', id);
-    for (const l of lbls) await db.delete('labels', l.id);
+    for (const l of lbls) {
+      await db.delete('labels', l.id);
+      await addToSyncQueue('labels', 'delete', l.id, null);
+    }
+
+    processSyncQueue();
 
     set({ deleteTargetAccountId: null });
     window.history.back();
@@ -78,6 +92,10 @@ export const createAccountsSlice: StateCreator<
 
   handleReorderAccounts: async (newAccounts: Account[]) => {
     set({ accounts: newAccounts });
-    await db.put('settings', { key: 'accounts_order', value: newAccounts.map(a => a.id) });
+    const orderKey = 'accounts_order';
+    const orderVal = newAccounts.map(a => a.id);
+    await db.put('settings', { key: orderKey, value: orderVal });
+    await addToSyncQueue('settings', 'upsert', orderKey, { key: orderKey, value: orderVal });
+    processSyncQueue();
   }
 });

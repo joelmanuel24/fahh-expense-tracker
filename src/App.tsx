@@ -6,6 +6,15 @@ import { ExpensesOverview } from './features/Expenses/pages/Overview';
 import { ExpenseForm } from './features/Expenses/pages/Index';
 import { SplitReceipt } from './features/Expenses/components/SplitReceipt';
 import { Settings } from './features/Settings/pages/Index';
+import { ConfigureAccount } from './features/Settings/pages/ConfigureAccount';
+import { OweDetails } from './features/Dashboard/pages/OweDetails';
+import { AuthDrawer } from './components/AuthDrawer';
+import { FirstSyncOverlay } from './components/FirstSyncOverlay';
+import { supabase } from './supabase';
+import { Account, Credit } from './types';
+import { processSyncQueue, subscribeToSyncStatus, subscribeToSyncCompletion, syncWorkspace, pullUpdatesFromServer } from './utils/syncEngine';
+import { useSettingsStore } from './features/Settings/models/store';
+import { useExpensesStore } from './features/Expenses/models/store';
 import './App.css';
 
 function App() {
@@ -24,9 +33,281 @@ function App() {
   // Sub-view item trackers
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
+  const [configuringAccountId, setConfiguringAccountId] = useState<string | null>(null);
   
   const [isDbLoaded, setIsDbLoaded] = useState<boolean>(false);
   const [isModalActive, setIsModalActive] = useState<boolean>(false);
+  const [isAuthDrawerOpen, setIsAuthDrawerOpen] = useState<boolean>(false);
+
+  // First Sync & Auth State Management
+  const [sessionUser, setSessionUser] = useState<any>(null);
+  const [showFirstSyncScreen, setShowFirstSyncScreen] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'completed' | 'failed'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const handleSyncAccounts = async (userObj: any = null) => {
+    const targetUser = userObj || sessionUser;
+    if (!targetUser) return;
+
+    setSyncStatus('syncing');
+    useSettingsStore.getState().setIsSyncing(true);
+    setSyncError(null);
+
+    try {
+      // 1. Fetch all local accounts from IndexedDB
+      const localAccounts = await db.getAll<Account>('accounts');
+      if (localAccounts.length === 0) {
+        await db.seedDefaultDatabase();
+      }
+      const freshAccounts = await db.getAll<Account>('accounts');
+
+      // 2. Format and upsert accounts
+      const accountsPayload = freshAccounts.map(acc => ({
+        id: acc.id,
+        name: acc.name,
+        owner_id: targetUser.id
+      }));
+      const { error: accErr } = await supabase
+        .from('accounts')
+        .upsert(accountsPayload);
+      if (accErr) throw accErr;
+
+      // 2b. Add user as owner collaborator for each account to collaborators table
+      const { data: existingCols, error: getColErr } = await supabase
+        .from('collaborators')
+        .select('account_id')
+        .eq('user_id', targetUser.id);
+      if (getColErr) throw getColErr;
+
+      const existingAccountIds = new Set(existingCols?.map(c => c.account_id) || []);
+
+      const collaboratorsPayload = freshAccounts
+        .filter(acc => !existingAccountIds.has(acc.id))
+        .map(acc => ({
+          id: crypto.randomUUID(),
+          account_id: acc.id,
+          user_id: targetUser.id,
+          role: 'owner'
+        }));
+
+      if (collaboratorsPayload.length > 0) {
+        const { error: colErr } = await supabase
+          .from('collaborators')
+          .insert(collaboratorsPayload);
+        if (colErr) throw colErr;
+      }
+
+      // 3. Format and upsert payment methods
+      const freshPayments = await db.getAll<any>('payment_methods');
+      if (freshPayments.length > 0) {
+        const paymentsPayload = freshPayments.map(pm => ({
+          id: pm.id,
+          name: pm.name,
+          owner_id: targetUser.id
+        }));
+        const { error: pmErr } = await supabase
+          .from('payment_methods')
+          .upsert(paymentsPayload);
+        if (pmErr) throw pmErr;
+      }
+
+      // 4. Format and upsert categories (map bgColor/textColor to lowercase columns)
+      const freshCategories = await db.getAll<any>('categories');
+      if (freshCategories.length > 0) {
+        const categoriesPayload = freshCategories.map(cat => ({
+          id: cat.id,
+          accountId: cat.accountId,
+          name: cat.name,
+          icon: cat.icon,
+          bgcolor: cat.bgColor,
+          textcolor: cat.textColor
+        }));
+        const { error: catErr } = await supabase
+          .from('categories')
+          .upsert(categoriesPayload);
+        if (catErr) throw catErr;
+      }
+
+      // 5. Format and upsert labels
+      const freshLabels = await db.getAll<any>('labels');
+      if (freshLabels.length > 0) {
+        const labelsPayload = freshLabels.map(lbl => ({
+          id: lbl.id,
+          accountId: lbl.accountId,
+          name: lbl.name
+        }));
+        const { error: lblErr } = await supabase
+          .from('labels')
+          .upsert(labelsPayload);
+        if (lblErr) throw lblErr;
+      }
+
+      // 6. Format and upsert settings
+      const freshSettings = await db.getAll<any>('settings');
+      const keysToSync = new Set([
+        'locationSuggestEnabled',
+        'dashboardWidgets',
+        'kkbQrs',
+        'accounts_order',
+        'categories_order',
+        'payment_methods_order'
+      ]);
+      const settingsPayload = freshSettings
+        .filter(s => keysToSync.has(s.key))
+        .map(s => ({
+          key: s.key,
+          value: s.value,
+          owner_id: targetUser.id
+        }));
+      if (settingsPayload.length > 0) {
+        const { error: setErr } = await supabase
+          .from('settings')
+          .upsert(settingsPayload);
+        if (setErr) throw setErr;
+      }
+
+      // 7. Format and upsert expense groups
+      const freshGroups = await db.getAll<any>('expense_groups');
+      if (freshGroups.length > 0) {
+        const groupsPayload = freshGroups.map(g => ({
+          id: g.id,
+          accountId: g.accountId,
+          description: g.description,
+          date: g.date,
+          paymentmethod: g.paymentMethod,
+          labels: g.labels || [],
+          paidusers: g.paidUsers || [],
+          lat: g.lat || null,
+          lng: g.lng || null,
+          receiptimage: g.receiptImage || null
+        }));
+        const { error: gErr } = await supabase
+          .from('expense_groups')
+          .upsert(groupsPayload);
+        if (gErr) throw gErr;
+      }
+
+      // 8. Format and upsert expense items
+      const freshItems = await db.getAll<any>('expense_items');
+      if (freshItems.length > 0) {
+        const itemsPayload = freshItems.map(item => ({
+          id: item.id,
+          groupId: item.groupId,
+          description: item.description,
+          amount: item.amount,
+          category: item.category,
+          splituser: item.splitUser || null
+        }));
+        const { error: iErr } = await supabase
+          .from('expense_items')
+          .upsert(itemsPayload);
+        if (iErr) throw iErr;
+      }
+
+      // 8.2. Format and upsert credits
+      const freshCredits = await db.getAll<Credit>('credits');
+      if (freshCredits.length > 0) {
+        const creditsPayload = freshCredits.map(c => ({
+          id: c.id,
+          account_id: c.accountId,
+          user_name: c.userName,
+          amount: c.amount,
+          description: c.description,
+          date: c.date,
+          owner_id: targetUser.id
+        }));
+        const { error: cErr } = await supabase
+          .from('credits')
+          .upsert(creditsPayload);
+        if (cErr) throw cErr;
+      }
+
+      // 9. Mark completion in settings store
+      await db.put('settings', { key: `firstSyncCompleted_${targetUser.id}`, value: true });
+
+      setSyncStatus('completed');
+      useSettingsStore.getState().setIsSyncing(false);
+      setTimeout(() => {
+        setShowFirstSyncScreen(false);
+        setSyncStatus('idle');
+      }, 1500);
+    } catch (err: any) {
+      console.error('Account sync error:', err);
+      setSyncStatus('failed');
+      useSettingsStore.getState().setIsSyncing(false);
+      setSyncError(err.message || 'An unknown error occurred during synchronization.');
+    }
+  };
+
+  // Listen to browser network connectivity changes to replay offline queue
+  useEffect(() => {
+    if (!sessionUser) return;
+
+    const handleOnline = () => {
+      console.log('[Connection] Device is back online. Replaying sync queue and pulling updates...');
+      syncWorkspace();
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [sessionUser]);
+
+  // Listen to Supabase auth events once database is ready
+  useEffect(() => {
+    if (!isDbLoaded) return;
+
+    // Process sync cycle on load (replays offline actions and pulls server updates)
+    syncWorkspace();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const user = session?.user ?? null;
+      setSessionUser(user);
+
+      if (user) {
+        // Check if sync has been completed for this user
+        const syncStatusRecord = await db.get<{ key: string, value: boolean }>('settings', `firstSyncCompleted_${user.id}`);
+        if (!syncStatusRecord || !syncStatusRecord.value) {
+          setShowFirstSyncScreen(true);
+          // Start the synchronization automatically
+          handleSyncAccounts(user);
+        } else {
+          // If first sync is done, process outstanding actions and pull updates
+          syncWorkspace();
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [isDbLoaded]);
+
+  // Subscribe to sync engine status and completion changes to reload stores
+  useEffect(() => {
+    const setIsSyncing = useSettingsStore.getState().setIsSyncing;
+    const unsubscribeStatus = subscribeToSyncStatus((isSyncing) => {
+      setIsSyncing(isSyncing);
+    });
+
+    const unsubscribeCompletion = subscribeToSyncCompletion(() => {
+      console.log('[App] Sync completed. Reloading Zustand stores for active account:', activeAccountId);
+      if (activeAccountId) {
+        useSettingsStore.getState().loadAccounts();
+        useSettingsStore.getState().loadPayments();
+        useSettingsStore.getState().loadCategories(activeAccountId);
+        useSettingsStore.getState().loadQrs();
+        useSettingsStore.getState().loadLocationAndWidgets();
+        useExpensesStore.getState().loadExpensesData(activeAccountId);
+      }
+    });
+
+    return () => {
+      unsubscribeStatus();
+      unsubscribeCompletion();
+    };
+  }, [activeAccountId]);
 
   // Initialize and Seed Database on Mount
   useEffect(() => {
@@ -44,12 +325,43 @@ function App() {
         window.history.replaceState({ view: 'expense-form' }, '', '?view=expense-form');
       } else {
         const view = params.get('view') || 'dashboard';
+        if (view === 'split-receipt') {
+          const gid = params.get('groupId');
+          if (gid) setViewingGroupId(gid);
+        } else if (view === 'configure-account') {
+          const aid = params.get('accountId');
+          if (aid) setConfiguringAccountId(aid);
+        }
         setHistoryStack([view]);
-        window.history.replaceState({ view }, '', `?view=${view}`);
+        window.history.replaceState({ view }, '', window.location.search || `?view=${view}`);
+      }
+
+      // 3. Check if auth modal needs to be open immediately
+      if (params.get('modal') === 'auth') {
+        setIsAuthDrawerOpen(true);
       }
     };
     initializeApp();
   }, []);
+
+  // Listen to popstate to toggle auth drawer overlay
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('modal') !== 'auth') {
+        setIsAuthDrawerOpen(false);
+      } else {
+        setIsAuthDrawerOpen(true);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleOpenAuth = () => {
+    setIsAuthDrawerOpen(true);
+    window.history.pushState({ modal: 'auth' }, '', '?modal=auth');
+  };
 
   // Intercept and reconcile Browser hardware back buttons (Popstate events)
   useEffect(() => {
@@ -60,6 +372,13 @@ function App() {
       if (params.has('modal')) return;
 
       const targetView = params.get('view') || 'dashboard';
+      if (targetView === 'split-receipt') {
+        const gid = params.get('groupId');
+        if (gid) setViewingGroupId(gid);
+      } else if (targetView === 'configure-account') {
+        const aid = params.get('accountId');
+        if (aid) setConfiguringAccountId(aid);
+      }
       
       setHistoryStack((prevStack) => {
         const idx = prevStack.indexOf(targetView);
@@ -85,6 +404,9 @@ function App() {
     if (!historyStack.includes('split-receipt')) {
       setViewingGroupId(null);
     }
+    if (!historyStack.includes('configure-account')) {
+      setConfiguringAccountId(null);
+    }
   }, [historyStack]);
 
   // Centralized Navigation Pushes
@@ -92,6 +414,18 @@ function App() {
     // If navigating to detail screens, push into URL query parameters
     const url = queryParams ? `?view=${viewId}&${queryParams}` : `?view=${viewId}`;
     window.history.pushState({ view: viewId }, '', url);
+
+    if (queryParams) {
+      const params = new URLSearchParams(queryParams);
+      if (viewId === 'configure-account') {
+        const aid = params.get('accountId');
+        if (aid) setConfiguringAccountId(aid);
+      } else if (viewId === 'split-receipt') {
+        const gid = params.get('groupId');
+        if (gid) setViewingGroupId(gid);
+      }
+    }
+
     setHistoryStack((prev) => {
       if (prev.includes(viewId)) {
         const idx = prev.indexOf(viewId);
@@ -180,7 +514,7 @@ function App() {
   }
 
   return (
-    <div className={`app-container ${isModalActive ? 'modal-active' : ''}`}>
+    <div className={`app-container ${isModalActive || isAuthDrawerOpen ? 'modal-active' : ''}`}>
       {/* 1. Dashboard View */}
       <section className={getViewClass('dashboard')}>
         <Dashboard
@@ -192,6 +526,7 @@ function App() {
           onViewSplit={handleViewSplit}
           onModalToggle={(open) => setIsModalActive(open)}
           isActive={activeView === 'dashboard'}
+          onProfileClick={handleOpenAuth}
         />
       </section>
  
@@ -240,11 +575,32 @@ function App() {
             activeAccountId={activeAccountId}
             onNavigate={handleNavigate}
             onModalToggle={(open) => setIsModalActive(open)}
+            onProfileClick={handleOpenAuth}
           />
         </section>
       )}
 
-      {/* 6. Global PWA Floating Bottom Navigation */}
+      {/* 6. Configure Account View */}
+      {historyStack.includes('configure-account') && (
+        <section className={getViewClass('configure-account')}>
+          <ConfigureAccount
+            accountId={configuringAccountId}
+            onClose={() => window.history.back()}
+          />
+        </section>
+      )}
+
+      {/* 6b. Owed Details View */}
+      {historyStack.includes('owe-details') && (
+        <section className={getViewClass('owe-details')}>
+          <OweDetails
+            activeAccountId={activeAccountId}
+            onClose={() => window.history.back()}
+          />
+        </section>
+      )}
+
+      {/* 7. Global PWA Floating Bottom Navigation */}
       {showBottomNav && (
         <BottomNav
           activeTab={getActiveTab()}
@@ -252,6 +608,32 @@ function App() {
           onAddTrigger={() => {
             setEditingGroupId(null);
             handleNavigate('expense-form');
+          }}
+        />
+      )}
+
+      {/* 7. Global Supabase Authentication Slider Drawer */}
+      <AuthDrawer isOpen={isAuthDrawerOpen} onClose={() => {
+        setIsAuthDrawerOpen(false);
+        // pop modal out of window history
+        if (window.location.search.includes('modal=auth')) {
+          window.history.back();
+        }
+      }} />
+
+      {/* 8. Global First Sync Progress Overlay */}
+      {showFirstSyncScreen && (
+        <FirstSyncOverlay
+          status={syncStatus}
+          error={syncError}
+          onRetry={() => handleSyncAccounts(sessionUser)}
+          onCancel={async () => {
+            // Skips sync by marking it as completed for this session
+            if (sessionUser) {
+              await db.put('settings', { key: `firstSyncCompleted_${sessionUser.id}`, value: true });
+            }
+            setShowFirstSyncScreen(false);
+            setSyncStatus('idle');
           }}
         />
       )}

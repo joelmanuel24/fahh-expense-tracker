@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../db';
 import { Label } from '../../../types';
+import { addToSyncQueue, processSyncQueue } from '../../../utils/syncEngine';
 
 interface LabelsDrawerProps {
   isOpen: boolean;
@@ -52,13 +53,15 @@ export const LabelsDrawer: React.FC<LabelsDrawerProps> = ({
     const labelName = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
     
     // Save record offline in IndexedDB
-    const newId = `lbl_${Date.now()}`;
+    const newId = crypto.randomUUID();
     const newRecord: Label = {
       id: newId,
       accountId: activeAccountId,
       name: labelName
     };
     await db.put('labels', newRecord);
+    await addToSyncQueue('labels', 'upsert', newId, newRecord);
+    processSyncQueue();
 
     // Update state lists
     setAllLabels(prev => [...prev, newRecord]);

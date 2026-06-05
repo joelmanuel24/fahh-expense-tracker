@@ -50,3 +50,12 @@ export interface KkbQr {
   name: string;
   base64: string;
 }
+
+export interface Credit {
+  id: string;
+  accountId: string;
+  userName: string;
+  amount: number;
+  description: string;
+  date: string;
+}

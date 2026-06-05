@@ -1,8 +1,9 @@
 import { StateCreator } from 'zustand';
 import { ExpensesStore, ExpensesSlice } from './types';
 import { db } from '../../../db';
-import { ExpenseGroup, ExpenseItem, Category } from '../../../types';
+import { ExpenseGroup, ExpenseItem, Category, Credit } from '../../../types';
 import { shouldIncludeItemInAccount } from '../../Dashboard/utils/dashboardLogic';
+import { addToSyncQueue, processSyncQueue } from '../../../utils/syncEngine';
 
 // Date formatter helper inside selectors
 const friendlyDateFormatter = (dateStr: string) => {
@@ -31,16 +32,18 @@ export const createExpensesSlice: StateCreator<
 > = (set, get) => ({
   expenseGroups: [],
   expenseItems: [],
+  credits: [],
   loading: false,
 
   loadExpensesData: async (accountId: string) => {
     set({ loading: true });
     try {
-      const [groups, items] = await Promise.all([
+      const [groups, items, credits] = await Promise.all([
         db.getGroupedByIndex<ExpenseGroup>('expense_groups', 'accountId', accountId),
-        db.getAll<ExpenseItem>('expense_items')
+        db.getAll<ExpenseItem>('expense_items'),
+        db.getGroupedByIndex<Credit>('credits', 'accountId', accountId)
       ]);
-      set({ expenseGroups: groups, expenseItems: items });
+      set({ expenseGroups: groups, expenseItems: items, credits: credits });
     } catch (err) {
       console.error('Failed to load expenses data', err);
     } finally {
@@ -49,7 +52,15 @@ export const createExpensesSlice: StateCreator<
   },
 
   deleteExpenseGroup: async (groupId: string, accountId: string) => {
+    const items = await db.getGroupedByIndex<ExpenseItem>('expense_items', 'groupId', groupId);
     await db.deleteExpenseGroup(groupId);
+    
+    await addToSyncQueue('expense_groups', 'delete', groupId, null);
+    for (const item of items) {
+      await addToSyncQueue('expense_items', 'delete', item.id, null);
+    }
+    processSyncQueue();
+    
     await get().loadExpensesData(accountId);
   },
 
@@ -61,24 +72,52 @@ export const createExpensesSlice: StateCreator<
     };
 
     await db.put('expense_groups', groupRecord);
+    await addToSyncQueue('expense_groups', 'upsert', groupRecord.id, groupRecord);
 
     if (editingGroupId) {
       const oldItems = await db.getGroupedByIndex<ExpenseItem>('expense_items', 'groupId', editingGroupId);
       for (const old of oldItems) {
         await db.delete('expense_items', old.id);
+        await addToSyncQueue('expense_items', 'delete', old.id, null);
       }
     }
 
     for (const item of items) {
       const itemRecord: ExpenseItem = {
         ...item,
-        id: item.id && !item.id.startsWith('new_') ? item.id : `item_${Math.random().toString(36).substring(2, 9)}`,
+        id: item.id && !item.id.startsWith('new_') ? item.id : crypto.randomUUID(),
         groupId: group.id
       };
       await db.put('expense_items', itemRecord);
+      await addToSyncQueue('expense_items', 'upsert', itemRecord.id, itemRecord);
     }
 
+    processSyncQueue();
+
     await get().loadExpensesData(group.accountId);
+  },
+
+  loadCreditsData: async (accountId: string) => {
+    try {
+      const credits = await db.getGroupedByIndex<Credit>('credits', 'accountId', accountId);
+      set({ credits });
+    } catch (err) {
+      console.error('Failed to load credits data', err);
+    }
+  },
+
+  saveCredit: async (credit: Credit) => {
+    await db.put('credits', credit);
+    await addToSyncQueue('credits', 'upsert', credit.id, credit);
+    processSyncQueue();
+    await get().loadCreditsData(credit.accountId);
+  },
+
+  deleteCredit: async (creditId: string, accountId: string) => {
+    await db.delete('credits', creditId);
+    await addToSyncQueue('credits', 'delete', creditId, null);
+    processSyncQueue();
+    await get().loadCreditsData(accountId);
   },
 
   // Selectors

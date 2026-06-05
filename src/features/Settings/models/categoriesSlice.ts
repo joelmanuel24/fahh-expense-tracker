@@ -3,6 +3,7 @@ import { SettingsStore, CategoriesSlice } from './types';
 import { db } from '../../../db';
 import { sortItemsByIds } from '../utils/layoutLogic';
 import { Category } from '../../../types';
+import { addToSyncQueue, processSyncQueue } from '../../../utils/syncEngine';
 
 export const createCategoriesSlice: StateCreator<
   SettingsStore,
@@ -34,7 +35,7 @@ export const createCategoriesSlice: StateCreator<
     const pickedHue = hues[Math.floor(Math.random() * hues.length)];
     
     const newCat: Category = {
-      id: `cat_${Date.now()}`,
+      id: crypto.randomUUID(),
       accountId: activeAccountId,
       name: newCatName.trim(),
       icon: newCatIcon.trim(),
@@ -43,6 +44,8 @@ export const createCategoriesSlice: StateCreator<
     };
 
     await db.put('categories', newCat);
+    await addToSyncQueue('categories', 'upsert', newCat.id, newCat);
+    processSyncQueue();
     set({ newCatName: '', newCatIcon: '' });
     await get().loadCategories(activeAccountId);
   },
@@ -51,6 +54,8 @@ export const createCategoriesSlice: StateCreator<
     const { deleteTargetCategoryId, categories } = get();
     if (deleteTargetCategoryId) {
       await db.delete('categories', deleteTargetCategoryId);
+      await addToSyncQueue('categories', 'delete', deleteTargetCategoryId, null);
+      processSyncQueue();
       // Retrieve activeAccountId from categories state
       const sample = categories.find(c => c.id === deleteTargetCategoryId) || categories[0];
       const activeId = sample ? sample.accountId : '';
@@ -65,6 +70,10 @@ export const createCategoriesSlice: StateCreator<
 
   handleReorderCategories: async (newCategories: Category[]) => {
     set({ categories: newCategories });
-    await db.put('settings', { key: 'categories_order', value: newCategories.map(c => c.id) });
+    const orderKey = 'categories_order';
+    const orderVal = newCategories.map(c => c.id);
+    await db.put('settings', { key: orderKey, value: orderVal });
+    await addToSyncQueue('settings', 'upsert', orderKey, { key: orderKey, value: orderVal });
+    processSyncQueue();
   }
 });

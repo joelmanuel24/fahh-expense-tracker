@@ -67,11 +67,13 @@ export const ConfigureDashboard: React.FC<ConfigureDashboardProps> = ({
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                     {widget.id === 'total_expenses' 
                       ? 'Monthly spending summary & balance toggle' 
-                      : widget.id === 'categories' 
-                        ? 'Live spending breakdown sums per category' 
-                        : widget.id === 'category_grid' 
-                          ? 'Grid shortcuts to quickly log new expenses' 
-                          : 'Collapsible list of recent transaction cards'}
+                      : widget.id === 'owe_totals'
+                        ? 'Outstanding debts owed to you and settlement/credit management'
+                        : widget.id === 'categories' 
+                          ? 'Live spending breakdown sums per category' 
+                          : widget.id === 'category_grid' 
+                            ? 'Grid shortcuts to quickly log new expenses' 
+                            : 'Collapsible list of recent transaction cards'}
                   </span>
                 </div>
               </div>

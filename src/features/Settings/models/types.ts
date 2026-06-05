@@ -50,6 +50,8 @@ export interface QrsSlice {
 export interface GeneralSlice {
   locationEnabled: boolean;
   widgets: any[];
+  isSyncing: boolean;
+  setIsSyncing: (val: boolean) => void;
   loadLocationAndWidgets: () => Promise<void>;
   handleToggleLocation: (active: boolean) => Promise<void>;
   handleToggleWidget: (index: number, visible: boolean) => Promise<void>;

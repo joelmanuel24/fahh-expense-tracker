@@ -1,6 +1,7 @@
 import { StateCreator } from 'zustand';
 import { SettingsStore, GeneralSlice } from './types';
 import { db } from '../../../db';
+import { addToSyncQueue, processSyncQueue } from '../../../utils/syncEngine';
 
 export const createGeneralSlice: StateCreator<
   SettingsStore,
@@ -10,6 +11,8 @@ export const createGeneralSlice: StateCreator<
 > = (set, get) => ({
   locationEnabled: false,
   widgets: [],
+  isSyncing: false,
+  setIsSyncing: (val) => set({ isSyncing: val }),
 
   deleteTargetPaymentId: null,
   deleteTargetPaymentName: '',
@@ -31,6 +34,7 @@ export const createGeneralSlice: StateCreator<
     
     const defaultWidgets = [
       { id: 'total_expenses', name: 'Total Expenses', visible: true },
+      { id: 'owe_totals', name: 'Owed Balances', visible: true },
       { id: 'categories', name: 'Category List', visible: true },
       { id: 'category_grid', name: 'Category Grid', visible: true },
       { id: 'recent_expenses', name: 'Recent Expenses', visible: true }
@@ -58,19 +62,28 @@ export const createGeneralSlice: StateCreator<
 
   handleToggleLocation: async (active: boolean) => {
     set({ locationEnabled: active });
-    await db.put('settings', { key: 'locationSuggestEnabled', value: active });
+    const key = 'locationSuggestEnabled';
+    await db.put('settings', { key, value: active });
+    await addToSyncQueue('settings', 'upsert', key, { key, value: active });
+    processSyncQueue();
   },
 
   handleToggleWidget: async (index: number, visible: boolean) => {
     const nextWidgets = [...get().widgets];
     nextWidgets[index] = { ...nextWidgets[index], visible };
     set({ widgets: nextWidgets });
-    await db.put('settings', { key: 'dashboardWidgets', value: nextWidgets });
+    const key = 'dashboardWidgets';
+    await db.put('settings', { key, value: nextWidgets });
+    await addToSyncQueue('settings', 'upsert', key, { key, value: nextWidgets });
+    processSyncQueue();
   },
 
   handleReorderWidgets: async (newWidgets: any[]) => {
     set({ widgets: newWidgets });
-    await db.put('settings', { key: 'dashboardWidgets', value: newWidgets });
+    const key = 'dashboardWidgets';
+    await db.put('settings', { key, value: newWidgets });
+    await addToSyncQueue('settings', 'upsert', key, { key, value: newWidgets });
+    processSyncQueue();
   },
 
   triggerDeletePayment: (id: string, name: string) => {

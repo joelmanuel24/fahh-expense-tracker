@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 import { SettingsStore, QrsSlice } from './types';
 import { db } from '../../../db';
 import { KkbQr } from '../../../types';
+import { addToSyncQueue, processSyncQueue } from '../../../utils/syncEngine';
 
 export const createQrsSlice: StateCreator<
   SettingsStore,
@@ -30,13 +31,16 @@ export const createQrsSlice: StateCreator<
     }
 
     const newQr: KkbQr = {
-      id: `qr_${Date.now()}`,
+      id: crypto.randomUUID(),
       name: newQrName.trim(),
       base64: newQrBase64
     };
 
     const nextQrs = [...qrs, newQr];
-    await db.put('settings', { key: 'kkbQrs', value: nextQrs });
+    const key = 'kkbQrs';
+    await db.put('settings', { key, value: nextQrs });
+    await addToSyncQueue('settings', 'upsert', key, { key, value: nextQrs });
+    processSyncQueue();
     set({
       newQrName: '',
       newQrBase64: '',
@@ -49,7 +53,10 @@ export const createQrsSlice: StateCreator<
     const { deleteTargetQrId, qrs } = get();
     if (deleteTargetQrId) {
       const nextQrs = qrs.filter(q => q.id !== deleteTargetQrId);
-      await db.put('settings', { key: 'kkbQrs', value: nextQrs });
+      const key = 'kkbQrs';
+      await db.put('settings', { key, value: nextQrs });
+      await addToSyncQueue('settings', 'upsert', key, { key, value: nextQrs });
+      processSyncQueue();
       set({ deleteTargetQrId: null });
       window.history.back(); // Pop state and clean up search params
       await get().loadQrs(); // Reload list

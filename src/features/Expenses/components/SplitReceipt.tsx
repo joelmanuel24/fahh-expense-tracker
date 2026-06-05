@@ -16,7 +16,6 @@ export const SplitReceipt: React.FC<SplitReceiptProps> = ({ groupId, onClose, ac
   
   // Paid splits tracker
   const [paidUsers, setPaidUsers] = useState<string[]>([]);
-  const [activeModalUser, setActiveModalUser] = useState<{ name: string; amount: number } | null>(null);
   
   // QRs tracker
   const [attachedQrs, setAttachedQrs] = useState<any[]>([]);
@@ -57,23 +56,7 @@ export const SplitReceipt: React.FC<SplitReceiptProps> = ({ groupId, onClose, ac
     loadReceiptData();
   }, [groupId, activeAccountId]);
 
-  const handleTogglePayment = async (user: string, isMarkingPaid: boolean) => {
-    if (!group) return;
-    let nextPaid = [...paidUsers];
-    if (isMarkingPaid) {
-      if (!nextPaid.includes(user)) {
-        nextPaid.push(user);
-      }
-    } else {
-      nextPaid = nextPaid.filter(u => u !== user);
-    }
-    
-    const updatedGroup = { ...group, paidUsers: nextPaid };
-    await db.put('expense_groups', updatedGroup);
-    setPaidUsers(nextPaid);
-    setGroup(updatedGroup);
-    setActiveModalUser(null);
-  };
+
 
   const handleCopySummary = () => {
     if (!group) return;
@@ -208,7 +191,6 @@ export const SplitReceipt: React.FC<SplitReceiptProps> = ({ groupId, onClose, ac
                       <div 
                         key={user}
                         className={`slip-totals-row ${isPaid ? 'paid' : ''}`}
-                        onClick={() => setActiveModalUser({ name: user, amount: userSum })}
                       >
                         <span className="total-person-name">
                           👤 {user}{isPaid ? ' ✅' : ''}
@@ -308,46 +290,6 @@ export const SplitReceipt: React.FC<SplitReceiptProps> = ({ groupId, onClose, ac
         </div>
       </div>
 
-      {/* 4. Custom split overlay modal */}
-      {activeModalUser && (
-        <div className="bottom-sheet-overlay">
-          <div className="sheet-scrim" onClick={() => setActiveModalUser(null)}></div>
-          <div className="sheet-content-wrapper" style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-            <div className="sheet-drag-indicator" onClick={() => setActiveModalUser(null)}></div>
-            <h3 className="sheet-title">{activeModalUser.name.toUpperCase()}'S SPLIT</h3>
-            <p className="sheet-subtitle" style={{ fontFamily: 'Space Mono, monospace', fontSize: '18px', fontWeight: 700, color: 'var(--color-primary)', marginTop: '4px', marginBottom: '16px' }}>
-              PHP {activeModalUser.amount.toFixed(2)}
-            </p>
-            
-            <div className="kkb-modal-actions-container" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-              <button 
-                type="button" 
-                className="primary-action-btn" 
-                style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', width: '100%' }}
-                onClick={() => handleTogglePayment(activeModalUser.name, true)}
-              >
-                Mark as Paid
-              </button>
-              <button 
-                type="button" 
-                className="utility-action-btn-tinted" 
-                style={{ width: '100%' }}
-                onClick={() => handleTogglePayment(activeModalUser.name, false)}
-              >
-                Mark as Unpaid
-              </button>
-              <button 
-                type="button" 
-                className="utility-action-btn-tinted" 
-                style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', width: '100%' }}
-                onClick={() => setActiveModalUser(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

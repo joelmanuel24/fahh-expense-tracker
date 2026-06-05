@@ -10,15 +10,52 @@ import { KkbQrs } from '../components/KkbQrs';
 import { ConfigureDashboard } from '../components/ConfigureDashboard';
 import { SettingsCard } from '../components/SettingsCard';
 import { useSettingsStore } from '../models/store';
+import { supabase } from '../../../supabase';
+import { processSyncQueue, syncWorkspace } from '../../../utils/syncEngine';
 
 interface SettingsProps {
   activeAccountId: string;
-  onNavigate: (viewId: string) => void;
+  onNavigate: (viewId: string, queryParams?: string) => void;
   onModalToggle?: (open: boolean) => void;
+  onProfileClick?: () => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ activeAccountId, onNavigate, onModalToggle }) => {
+export const Settings: React.FC<SettingsProps> = ({ 
+  activeAccountId, 
+  onNavigate, 
+  onModalToggle,
+  onProfileClick
+}) => {
   const store = useSettingsStore();
+  const [user, setUser] = useState<any>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  // Monitor auth status
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Monitor network status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const loadSettingsData = async () => {
     await Promise.all([
@@ -104,7 +141,7 @@ export const Settings: React.FC<SettingsProps> = ({ activeAccountId, onNavigate,
   const handleResetDatabase = async () => {
     if (confirm('⚠️ WARNING: Wiping the database will erase ALL expense records, accounts, and QR sheets. Proceed?')) {
       if (confirm('Are you absolutely certain? This operation CANNOT be undone!')) {
-        indexedDB.deleteDatabase('FamExpenseTracker');
+        indexedDB.deleteDatabase('FahhExpenseTracker');
         alert('Database reset successful. The application will now reload to pre-seed default configurations.');
         window.location.reload();
       }
@@ -119,17 +156,17 @@ export const Settings: React.FC<SettingsProps> = ({ activeAccountId, onNavigate,
 
       <div className="scroll-content padding-bottom-large">
         
+
         {/* Account Management section */}
         <ManageAccounts
           accounts={store.accounts}
           activeAccountId={activeAccountId}
           onReorder={store.handleReorderAccounts}
-          onRename={store.handleRenameAccount}
           onSwitch={store.handleSwitchAccount}
-          onDelete={(id, name) => store.triggerDeleteAccount(id, name, store.accounts.length)}
           newAccountName={store.newAccountName}
           setNewAccountName={store.setNewAccountName}
           onAdd={store.handleAddAccount}
+          onConfigureAccount={(id) => onNavigate('configure-account', `accountId=${id}`)}
         />
 
         {/* Global Payment Methods */}
@@ -194,6 +231,85 @@ export const Settings: React.FC<SettingsProps> = ({ activeAccountId, onNavigate,
           </div>
         </SettingsCard>
 
+        {/* Supabase Account Profile Card */}
+        <SettingsCard title="Cloud Account">
+          {user ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '24px' }}>👤</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                    {user.email}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Provider: {user.app_metadata?.provider?.toUpperCase() || 'EMAIL'}
+                  </span>
+                </div>
+              </div>
+              {isOnline ? (
+                <button 
+                  className="utility-action-btn-tinted" 
+                  style={{ width: '100%', marginTop: '4px' }} 
+                  onClick={async (e) => {
+                    const btn = e.currentTarget;
+                    btn.disabled = true;
+                    const originalText = btn.innerText;
+                    btn.innerText = 'Syncing... 🔄';
+                    try {
+                      await syncWorkspace(true);
+                      btn.innerText = 'Sync Successful! ✓';
+                      setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                      }, 2000);
+                    } catch (err) {
+                      console.error('Manual sync failed:', err);
+                      btn.innerText = 'Sync Failed ✕';
+                      setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                      }, 2000);
+                    }
+                  }}
+                >
+                  Sync Workspace
+                </button>
+              ) : (
+                <button 
+                  className="utility-action-btn-tinted" 
+                  style={{ width: '100%', marginTop: '4px', opacity: 0.5, cursor: 'not-allowed' }} 
+                  disabled
+                >
+                  Offline (Sync Unavailable) 🔌
+                </button>
+              )}
+              <button 
+                className="utility-action-btn-danger" 
+                style={{ width: '100%', marginTop: '4px' }} 
+                onClick={async () => {
+                  if (confirm('Are you sure you want to log out?')) {
+                    await supabase.auth.signOut();
+                  }
+                }}
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                Back up your expenses and sync across multiple devices by logging in to your cloud account.
+              </span>
+              <button 
+                className="utility-action-btn-tinted" 
+                style={{ width: '100%', marginTop: '6px' }}
+                onClick={onProfileClick}
+              >
+                Log In / Register
+              </button>
+            </div>
+          )}
+        </SettingsCard>
       </div>
 
       {/* Reusable Deletion Confirmation Dialogs */}

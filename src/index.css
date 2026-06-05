@@ -385,7 +385,7 @@ body {
 
 .currency-value {
   font-family: 'Outfit', sans-serif;
-  font-size: 38px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.5px;
@@ -1476,23 +1476,12 @@ body {
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid transparent;
-}
-.slip-totals-row:hover {
-  background-color: #e0e0e0;
-  border-color: rgba(0, 0, 0, 0.08);
-}
-.slip-totals-row:active {
-  transform: scale(0.97);
 }
 .slip-totals-row.paid {
   background-color: #e8f5e9;
   border-color: rgba(16, 185, 129, 0.15);
-}
-.slip-totals-row.paid:hover {
-  background-color: #c8e6c9;
 }
 .slip-totals-row .total-person-name {
   color: #121212;
@@ -2324,6 +2313,12 @@ input:checked + .switch-slider:before {
 
 .settings-edit-link:active {
   opacity: 0.6;
+}
+
+.form-group.flex-row-between {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 }
 
 

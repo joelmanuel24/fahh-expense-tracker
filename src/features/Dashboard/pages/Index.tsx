@@ -3,9 +3,11 @@ import { db } from '../../../db';
 import { useSettingsStore } from '../../Settings/models/store';
 import { useExpensesStore } from '../../Expenses/models/store';
 import { TotalExpensesWidget } from '../components/TotalExpensesWidget';
+import { OweTotalsWidget } from '../components/OweTotalsWidget';
 import { CategoryListWidget } from '../components/CategoryListWidget';
 import { CategoryGridWidget } from '../components/CategoryGridWidget';
 import { RecentExpensesWidget } from '../components/RecentExpensesWidget';
+import { calculateOweTotals } from '../utils/dashboardLogic';
 
 interface DashboardProps {
   activeAccountId: string;
@@ -16,6 +18,7 @@ interface DashboardProps {
   onViewSplit: (groupId: string) => void;
   onModalToggle?: (open: boolean) => void;
   isActive: boolean;
+  onProfileClick: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -26,18 +29,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onEditExpense,
   onViewSplit,
   onModalToggle,
-  isActive
+  isActive,
+  onProfileClick
 }) => {
   const {
     accounts,
     categories,
     widgets,
+    isSyncing,
     loadAccounts,
     loadCategories,
     loadLocationAndWidgets
   } = useSettingsStore();
 
   const {
+    expenseGroups,
+    expenseItems,
+    credits,
     loadExpensesData,
     deleteExpenseGroup,
     getTotalExpensesForMonth,
@@ -52,7 +60,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [activeActionGroupDesc, setActiveActionGroupDesc] = useState<string>('');
 
   const activeAccount = accounts.find(a => a.id === activeAccountId);
-  const accountName = activeAccount ? activeAccount.name : 'Personal Account';
+  const accountName = activeAccount ? activeAccount.name : 'Personal';
 
   // Parallel load of settings metadata and core expenses data
   useEffect(() => {
@@ -113,25 +121,58 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const totalExpenses = getTotalExpensesForMonth(activeMonth);
   const categorySummaries = getCategorySummariesForMonth(activeMonth, categories);
   const groups = getRecentExpensesGroups(activeMonth);
+  const oweSummaries = calculateOweTotals(expenseGroups, expenseItems, credits);
 
   return (
     <>
       {/* 1. Dashboard Header */}
       <header className="view-header">
-        <button 
-          id="account-switcher-trigger" 
-          className="account-badge-btn"
-          onClick={() => {
-            setIsAccountSheetOpen(true);
-            // Push modal query to url state
-            window.history.pushState({ modal: 'accounts' }, '', '?modal=accounts');
-          }}
-        >
-          <span id="active-account-name">{accountName}</span>
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="chevron-down-icon">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button 
+            id="auth-profile-trigger"
+            className="icon-btn"
+            style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-secondary)',
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'var(--transition-smooth)',
+              position: 'relative'
+            }}
+            onClick={onProfileClick}
+            aria-label="User Profile"
+          >
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" style={{ width: '20px', height: '20px' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            </svg>
+            <span className={`sync-badge-container ${isSyncing ? 'visible' : ''}`}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="sync-spinner-icon">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </span>
+          </button>
+
+          <button 
+            id="account-switcher-trigger" 
+            className="account-badge-btn"
+            onClick={() => {
+              setIsAccountSheetOpen(true);
+              // Push modal query to url state
+              window.history.pushState({ modal: 'accounts' }, '', '?modal=accounts');
+            }}
+          >
+            <span id="active-account-name">{accountName}</span>
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="chevron-down-icon">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+        </div>
 
         <div className="month-selector">
           <button className="icon-btn" onClick={() => onMonthChange(-1)} aria-label="Previous Month">
@@ -163,6 +204,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 totalExpenses={totalExpenses}
                 isBalanceVisible={isBalanceVisible}
                 onToggleBalance={() => setIsBalanceVisible(prev => !prev)}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+
+          if (widget.id === 'owe_totals') {
+            return (
+              <OweTotalsWidget
+                key="owe_totals"
+                oweSummaries={oweSummaries}
                 onNavigate={onNavigate}
               />
             );

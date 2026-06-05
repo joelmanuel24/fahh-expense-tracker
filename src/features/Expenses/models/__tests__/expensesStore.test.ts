@@ -349,12 +349,12 @@ describe('Expenses Zustand Store & Selectors', () => {
 
       await store.saveExpenseGroup(group1, [item1], null);
 
-      // Verify Transaction 1 item is saved with a fresh random ID (e.g. starts with 'item_' and is NOT 'new_init')
+      // Verify Transaction 1 item is saved with a fresh random ID (e.g. is a valid UUID and is NOT 'new_init')
       const stateAfterTx1 = useExpensesStore.getState();
       expect(stateAfterTx1.expenseItems.length).toBe(1);
       const savedItem1 = stateAfterTx1.expenseItems[0];
       expect(savedItem1.id).not.toBe('new_init');
-      expect(savedItem1.id.startsWith('item_')).toBe(true);
+      expect(savedItem1.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
       // Transaction 2: Initial item placeholder ID is ALSO 'new_init'
       const group2: ExpenseGroup = {
@@ -385,7 +385,7 @@ describe('Expenses Zustand Store & Selectors', () => {
       expect(savedItem2).toBeDefined();
       expect(savedItem2.id).not.toBe('new_init');
       expect(savedItem2.id).not.toBe(savedItem1.id); // Must be different unique IDs!
-      expect(savedItem2.id.startsWith('item_')).toBe(true);
+      expect(savedItem2.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     });
   });
 });

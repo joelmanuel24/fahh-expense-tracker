@@ -44,8 +44,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const toastTimeoutRef = useRef<any>(null);
   
   // Breakdown items state
-  const [items, setItems] = useState<Partial<ExpenseItem>[]>([
-    { id: 'new_init', description: '', amount: 0, category: 'Others', splitUser: '' }
+  const [items, setItems] = useState<Partial<ExpenseItem>[]>(() => [
+    { id: crypto.randomUUID(), description: '', amount: 0, category: 'Others', splitUser: '' }
   ]);
 
   // Options & past transaction states fetched from settings and expenses stores
@@ -284,7 +284,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     const nextCat = items.length > 0 && items[items.length - 1].category ? items[items.length - 1].category : defaultCat;
     setItems(prev => [
       ...prev,
-      { id: `new_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, description: '', amount: 0, category: nextCat, splitUser: '' }
+      { id: crypto.randomUUID(), description: '', amount: 0, category: nextCat, splitUser: '' }
     ]);
   };
 
@@ -415,7 +415,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
       return;
     }
 
-    const groupId = editingGroupId || `grp_${Date.now()}`;
+    const groupId = editingGroupId || crypto.randomUUID();
     
     // Save Group
     const groupRecord: ExpenseGroup = {

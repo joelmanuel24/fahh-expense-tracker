@@ -28,7 +28,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onModalToggle,
   isActive
 }) => {
-  const [accountName, setAccountName] = useState<string>('Personal Account');
+  const [accountName, setAccountName] = useState<string>('Personal');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState<boolean>(false);
   const [isBalanceVisible, setIsBalanceVisible] = useState<boolean>(true);
