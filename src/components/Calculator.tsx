@@ -108,44 +108,47 @@ export const Calculator: React.FC<CalculatorProps> = ({ isOpen, initialValue, on
   };
 
   return (
-    <div className={`calculator-panel ${isOpen ? '' : 'hidden'}`}>
-      {/* Drag Indicator and live equation screen */}
-      <div className="calc-panel-header">
-        <div className="calc-drag-indicator" onClick={onClose} style={{ cursor: 'pointer' }}></div>
-        <div className="calc-display-line">
-          <span className="calc-equation" id="calc-formula-display">{formula}</span>
-          <span className="calc-result" id="calc-result-display">PHP {result.toFixed(2)}</span>
+    <div className={`bottom-sheet-overlay ${isOpen ? '' : 'hidden'}`} style={{ zIndex: 200 }}>
+      <div className="sheet-scrim" onClick={onClose}></div>
+      <div className={`calculator-panel ${isOpen ? '' : 'hidden'}`} style={{ zIndex: 20 }}>
+        {/* Drag Indicator and live equation screen */}
+        <div className="calc-panel-header">
+          <div className="calc-drag-indicator" onClick={onClose} style={{ cursor: 'pointer' }}></div>
+          <div className="calc-display-line">
+            <span className="calc-equation" id="calc-formula-display">{formula}</span>
+            <span className="calc-result" id="calc-result-display">PHP {result.toFixed(2)}</span>
+          </div>
         </div>
-      </div>
 
-      {/* 5x4 Keypad Grid Layout matching user's layout design reference */}
-      <div className="calc-grid">
-        <button type="button" className="calc-btn clear" onClick={() => handleKeyPress('C')}>C</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('()')}>()</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('%')}>%</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('/')}>÷</button>
+        {/* 5x4 Keypad Grid Layout matching user's layout design reference */}
+        <div className="calc-grid">
+          <button type="button" className="calc-btn clear" onClick={() => handleKeyPress('C')}>C</button>
+          <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('()')}>()</button>
+          <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('%')}>%</button>
+          <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('/')}>÷</button>
 
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('7')}>7</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('8')}>8</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('9')}>9</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('*')}>×</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('7')}>7</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('8')}>8</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('9')}>9</button>
+          <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('*')}>×</button>
 
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('4')}>4</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('5')}>5</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('6')}>6</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('-')}>−</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('4')}>4</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('5')}>5</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('6')}>6</button>
+          <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('-')}>−</button>
 
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('1')}>1</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('2')}>2</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('3')}>3</button>
-        <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('+')}>+</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('1')}>1</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('2')}>2</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('3')}>3</button>
+          <button type="button" className="calc-btn operator" onClick={() => handleKeyPress('+')}>+</button>
 
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('+/-')}>+/-</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('0')}>0</button>
-        <button type="button" className="calc-btn number" onClick={() => handleKeyPress('.')}>.</button>
-        <button type="button" className="calc-btn evaluate" onClick={() => handleKeyPress('=')}>=</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('+/-')}>+/-</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('0')}>0</button>
+          <button type="button" className="calc-btn number" onClick={() => handleKeyPress('.')}>.</button>
+          <button type="button" className="calc-btn evaluate" onClick={() => handleKeyPress('=')}>=</button>
 
-        <button type="button" className="calc-btn confirm primary" onClick={handleConfirm}>✓ Confirm</button>
+          <button type="button" className="calc-btn confirm primary" onClick={handleConfirm}>✓ Confirm</button>
+        </div>
       </div>
     </div>
   );

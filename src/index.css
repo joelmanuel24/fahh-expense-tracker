@@ -56,39 +56,41 @@
   user-select: none;
 }
 
+html {
+  overflow: hidden;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 body {
   background-color: #0d0d0d;
   color: var(--text-primary);
   font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Base Frame Constraints: Creates a standard native screen container */
 .app-container {
   width: 100%;
-  max-width: 440px;
   height: 100vh;
-  max-height: 900px;
   background-color: var(--bg-app);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
-  border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-}
-
-@media (max-width: 450px) {
-  .app-container {
-    max-width: 100%;
-    height: 100vh;
-    max-height: 100%;
-    border: none;
-    box-shadow: none;
-  }
+  position: relative;
+  overflow: hidden;
 }
 
 /* ==========================================================================
@@ -486,6 +488,32 @@ body {
   flex-direction: column;
   gap: 12px;
   padding-bottom: 80px;
+}
+
+.load-more-btn {
+  width: 100%;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.load-more-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+.load-more-btn:active {
+  transform: scale(0.98);
 }
 
 .transaction-group-card {
@@ -1158,6 +1186,14 @@ body {
   gap: 8px;
   align-items: center;
   position: relative;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15), background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.item-row.is-modifying {
+  z-index: 250 !important; /* Float above the bottom-sheet-overlay scrim */
+  background-color: var(--bg-surface-elevated, #282828) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
 }
 
 .item-input {

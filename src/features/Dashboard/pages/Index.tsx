@@ -243,6 +243,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <RecentExpensesWidget
                 key="recent_expenses"
                 groups={groups}
+                activeAccountId={activeAccountId}
+                activeMonth={activeMonth}
                 expandedGroupId={expandedGroupId}
                 onToggleAccordion={toggleAccordion}
                 onViewSplit={onViewSplit}

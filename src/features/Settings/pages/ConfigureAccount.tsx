@@ -17,8 +17,19 @@ export const ConfigureAccount: React.FC<ConfigureAccountProps> = ({ accountId, o
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [isLoadingCols, setIsLoadingCols] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [sentInvitations, setSentInvitations] = useState<any[]>([]);
+  const [inviteEmail, setInviteEmail] = useState<string>('');
+  const [isSendingInvite, setIsSendingInvite] = useState<boolean>(false);
+  const [inviteStatus, setInviteStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const accountFromStore = store.accounts.find(acc => acc.id === accountId);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     if (!accountId) return;
@@ -30,6 +41,7 @@ export const ConfigureAccount: React.FC<ConfigureAccountProps> = ({ accountId, o
   useEffect(() => {
     if (!accountId || !isOnline) {
       setCollaborators([]);
+      setSentInvitations([]);
       return;
     }
 
@@ -46,7 +58,98 @@ export const ConfigureAccount: React.FC<ConfigureAccountProps> = ({ accountId, o
           console.error('Failed to load collaborators:', error);
         }
       });
+
+    supabase
+      .from('account_invitations')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('status', 'pending')
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setSentInvitations(data);
+        } else if (error) {
+          console.error('Failed to load sent invitations:', error);
+        }
+      });
   }, [accountId, isOnline]);
+
+  const handleSendInvite = async () => {
+    const emailVal = inviteEmail.trim().toLowerCase();
+    if (!emailVal) return;
+
+    // Basic email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailVal)) {
+      setInviteStatus({ type: 'error', message: 'Please enter a valid email address.' });
+      return;
+    }
+
+    // Check if user is already a collaborator
+    const isAlreadyCol = collaborators.some(
+      (c) => c.email?.toLowerCase() === emailVal || c.display_name?.toLowerCase() === emailVal
+    );
+    if (isAlreadyCol) {
+      setInviteStatus({ type: 'error', message: 'User is already a collaborator on this account.' });
+      return;
+    }
+
+    // Check if an invitation is already pending
+    const isAlreadyInvited = sentInvitations.some(
+      (i) => i.invitee_email.toLowerCase() === emailVal
+    );
+    if (isAlreadyInvited) {
+      setInviteStatus({ type: 'error', message: 'An invitation is already pending for this email.' });
+      return;
+    }
+
+    try {
+      setIsSendingInvite(true);
+      setInviteStatus(null);
+
+      const inviteId = crypto.randomUUID();
+      const newInvite = {
+        id: inviteId,
+        account_id: accountId!,
+        account_name: account?.name || accountFromStore?.name || 'Shared Account',
+        invitee_email: emailVal,
+        inviter_email: currentUser?.email || '',
+        inviter_id: currentUser?.id,
+        status: 'pending'
+      };
+
+      const { error } = await supabase
+        .from('account_invitations')
+        .insert(newInvite);
+
+      if (error) throw error;
+
+      setInviteStatus({ type: 'success', message: 'Invitation sent successfully!' });
+      setInviteEmail('');
+      setSentInvitations((prev) => [...prev, newInvite]);
+    } catch (err: any) {
+      console.error('Failed to send invite:', err);
+      setInviteStatus({ type: 'error', message: err.message || 'Failed to send invitation.' });
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    if (!confirm('Are you sure you want to cancel this invitation?')) return;
+    try {
+      const { error } = await supabase
+        .from('account_invitations')
+        .delete()
+        .eq('id', inviteId);
+      if (error) throw error;
+      setSentInvitations((prev) => prev.filter((i) => i.id !== inviteId));
+    } catch (err: any) {
+      console.error('Failed to cancel invite:', err);
+      alert('Error cancelling invite: ' + err.message);
+    }
+  };
+
+  const isOwner = collaborators.some(c => c.user_id === currentUser?.id && c.role === 'owner');
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -155,55 +258,143 @@ export const ConfigureAccount: React.FC<ConfigureAccountProps> = ({ accountId, o
                 <div style={{ color: 'var(--text-secondary)', fontSize: '13px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
                   Loading collaborators...
                 </div>
-              ) : collaborators.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontFamily: 'Plus Jakarta Sans, sans-serif', fontStyle: 'italic' }}>
-                  No collaborators found for this account.
-                </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {collaborators.map((col) => {
-                    const displayName = col.display_name || col.email;
-                    const isOwner = col.role === 'owner';
-                    return (
-                      <div 
-                        key={col.id} 
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 0',
-                          backgroundColor: 'transparent',
-                          border: 'none'
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                            {displayName}
-                          </span>
-                          {col.display_name && (
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                              {col.email}
+                <>
+                  {collaborators.length === 0 ? (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontFamily: 'Plus Jakarta Sans, sans-serif', fontStyle: 'italic', marginBottom: '8px' }}>
+                      No collaborators found for this account.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {collaborators.map((col) => {
+                        const displayName = col.display_name || col.email;
+                        const colIsOwner = col.role === 'owner';
+                        return (
+                          <div 
+                            key={col.id} 
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 0',
+                              backgroundColor: 'transparent',
+                              border: 'none'
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                                {displayName}
+                              </span>
+                              {col.display_name && (
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                                  {col.email}
+                                </span>
+                              )}
+                            </div>
+                            <span 
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: colIsOwner ? 'rgba(88, 76, 244, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                                color: colIsOwner ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                textTransform: 'capitalize',
+                                fontFamily: 'Plus Jakarta Sans, sans-serif'
+                              }}
+                            >
+                              {col.role}
                             </span>
-                          )}
-                        </div>
-                        <span 
-                          style={{
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            backgroundColor: isOwner ? 'rgba(88, 76, 244, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-                            color: isOwner ? 'var(--color-primary)' : 'var(--text-secondary)',
-                            textTransform: 'capitalize',
-                            fontFamily: 'Plus Jakarta Sans, sans-serif'
-                          }}
-                        >
-                          {col.role}
-                        </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Sent Invitations List */}
+                  {sentInvitations.length > 0 && (
+                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                        Pending Invites
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {sentInvitations.map((inv) => (
+                          <div 
+                            key={inv.id} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between',
+                              padding: '4px 0'
+                            }}
+                          >
+                            <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                              {inv.invitee_email}
+                            </span>
+                            {isOwner && (
+                              <button 
+                                type="button" 
+                                style={{ 
+                                  background: 'transparent', 
+                                  border: 'none', 
+                                  color: 'var(--color-danger)', 
+                                  fontSize: '11px', 
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  padding: '4px 8px',
+                                  fontFamily: 'Plus Jakarta Sans, sans-serif'
+                                }}
+                                onClick={() => handleCancelInvite(inv.id)}
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  )}
+
+                  {/* Invite New Collaborator Input */}
+                  {isOwner && (
+                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: 'Outfit, sans-serif' }}>
+                        Invite Collaborator
+                      </label>
+                      <div className="settings-add-row" style={{ display: 'flex', gap: '8px' }}>
+                        <input 
+                          type="email" 
+                          className="settings-input" 
+                          placeholder="Enter invitee email" 
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          disabled={isSendingInvite}
+                          style={{ flex: 1 }}
+                        />
+                        <button 
+                          type="button"
+                          className="utility-action-btn-tinted" 
+                          style={{ margin: 0, padding: '0 16px', flexShrink: 0, fontSize: '13px', fontWeight: 600, height: '38px', borderRadius: 'var(--radius-sm)' }}
+                          onClick={handleSendInvite}
+                          disabled={isSendingInvite}
+                        >
+                          {isSendingInvite ? 'Sending...' : 'Invite'}
+                        </button>
+                      </div>
+                      {inviteStatus && (
+                        <span style={{ 
+                          fontSize: '12px', 
+                          fontWeight: 500,
+                          color: inviteStatus.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)',
+                          fontFamily: 'Plus Jakarta Sans, sans-serif',
+                          marginTop: '4px' 
+                        }}>
+                          {inviteStatus.message}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
               )
             ) : (
               <p style={{ 

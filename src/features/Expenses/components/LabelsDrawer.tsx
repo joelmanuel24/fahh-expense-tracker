@@ -22,7 +22,7 @@ export const LabelsDrawer: React.FC<LabelsDrawerProps> = ({
   const [allLabels, setAllLabels] = useState<Label[]>([]);
   const [localSelected, setLocalSelected] = useState<Set<string>>(new Set());
 
-  // Load labels list
+  // Load labels list on drawer open
   useEffect(() => {
     const loadLabels = async () => {
       const list = await db.getGroupedByIndex<Label>('labels', 'accountId', activeAccountId);
@@ -33,7 +33,8 @@ export const LabelsDrawer: React.FC<LabelsDrawerProps> = ({
       setLocalSelected(new Set(selectedLabels));
       setSearch('');
     }
-  }, [isOpen, activeAccountId, selectedLabels]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, activeAccountId]);
 
   const handleToggleLabel = (name: string) => {
     const next = new Set(localSelected);
@@ -73,6 +74,24 @@ export const LabelsDrawer: React.FC<LabelsDrawerProps> = ({
     
     // Clear search
     setSearch('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const trimmed = search.trim();
+      if (!trimmed) return;
+
+      const match = allLabels.find(lbl => lbl.name.toLowerCase() === trimmed.toLowerCase());
+      if (match) {
+        const next = new Set(localSelected);
+        next.add(match.name);
+        setLocalSelected(next);
+        setSearch('');
+      } else {
+        handleCreateLabelOnFly();
+      }
+    }
   };
 
   const handleClearAll = () => {
@@ -130,6 +149,7 @@ export const LabelsDrawer: React.FC<LabelsDrawerProps> = ({
             className="search-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
 
@@ -153,11 +173,8 @@ export const LabelsDrawer: React.FC<LabelsDrawerProps> = ({
           </div>
         </div>
 
-        <div className="dashed-divider" style={{ margin: '12px 20px' }}></div>
-
-        {/* 3. Selections Checklist */}
-        <div className="label-selection-block" style={{ flex: 1, overflowY: 'auto', margin: '0 20px' }}>
-          <span className="label-block-title" style={{ marginBottom: '8px', display: 'block' }}>Checklist</span>
+        {/* 3. Selections Checklist / Search Results */}
+        <div className="label-selection-block" style={{ flex: 1, overflowY: 'auto', margin: '16px 20px 0 20px' }}>
           <div className="labels-checklist" style={{ maxHeight: 'none' }}>
             {filteredLabels.map((lbl) => {
               const isChecked = localSelected.has(lbl.name);

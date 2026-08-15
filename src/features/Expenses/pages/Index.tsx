@@ -59,6 +59,49 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const [isCalcOpen, setIsCalcOpen] = useState<boolean>(false);
   const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
   const [calcInitialVal, setCalcInitialVal] = useState<string>('0');
+  const [rowTranslateY, setRowTranslateY] = useState<number>(0);
+
+  useEffect(() => {
+    if (isCalcOpen && activeItemIndex !== null) {
+      // Small timeout to ensure DOM layout updates (e.g. calculator renders) before measuring
+      const timer = setTimeout(() => {
+        const rowEl = document.querySelector(`.item-row-index-${activeItemIndex}`) as HTMLElement;
+        const containerEl = document.querySelector('.app-container') as HTMLElement;
+        const calcEl = document.querySelector('.calculator-panel') as HTMLElement;
+
+        if (rowEl && containerEl) {
+          const rowRect = rowEl.getBoundingClientRect();
+          const containerRect = containerEl.getBoundingClientRect();
+          
+          let calcHeight = 400; // default/fallback height
+          if (calcEl) {
+            calcHeight = calcEl.getBoundingClientRect().height;
+          }
+
+          // Target top of row = container bottom - calculator height - row height - margin (16px)
+          const targetTop = containerRect.bottom - calcHeight - rowRect.height - 16;
+          
+          // Difference between target top and current top of the row
+          const diffY = targetTop - rowRect.top;
+          
+          setRowTranslateY(diffY);
+        }
+      }, 50);
+
+      return () => clearTimeout(timer);
+    } else {
+      setRowTranslateY(0);
+    }
+  }, [isCalcOpen, activeItemIndex]);
+
+  // Blur the active amount input when calculator closes to allow refocussing
+  useEffect(() => {
+    if (!isCalcOpen) {
+      if (document.activeElement && document.activeElement.classList.contains('amount')) {
+        (document.activeElement as HTMLElement).blur();
+      }
+    }
+  }, [isCalcOpen]);
 
   // Autocomplete states
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<any[]>([]);
@@ -624,94 +667,113 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
             </div>
 
             <div className="items-container">
-              {items.map((row, idx) => (
-                <div key={row.id || idx} className="item-row" style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'stretch' }}>
-                  
-                  {/* Dynamic grid row inputs */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: '8px', alignItems: 'center' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Item name"
-                      className="item-input description"
-                      value={row.description || ''}
-                      onChange={(e) => handleItemFieldChange(idx, 'description', e.target.value)}
-                    />
-                    
-                    {/* suppression amount */}
-                    <input 
-                      type="text" 
-                      inputMode="none"
-                      placeholder="0.00"
-                      className="item-input amount"
-                      value={row.amount === 0 ? '' : row.amount}
-                      onFocus={() => handleAmountFocus(idx)}
-                      readOnly
-                    />
-
-                    <div 
-                      className="category-picker-trigger" 
-                      onClick={() => openCategoryPicker(idx)}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        height: '28px', 
-                        borderRadius: 'var(--radius-sm)', 
-                        backgroundColor: 'var(--bg-app)', 
-                        cursor: 'pointer',
-                        boxSizing: 'border-box',
-                        padding: '0 6px',
-                        border: '1px solid var(--border-light)'
-                      }}
-                    >
-                      <span style={{ fontSize: '15px', lineHeight: '1' }}>
-                        {getCategoryIcon(row.category || 'Others')}
-                      </span>
-                      <svg fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" style={{ width: '10px', height: '10px', marginLeft: '3px', color: 'var(--text-secondary)' }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </div>
-
-                    <button 
-                      type="button" 
-                      className="delete-row-btn" 
-                      onClick={() => handleRemoveItemRow(idx)}
-                      disabled={items.length === 1}
-                      aria-label="Delete Item"
-                    >
-                      <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* KKB Split assignee row (expanded inline) */}
-                  {isKkbActive && (
-                    <div className="item-kkb-assignee-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-                      <span className="assignee-avatar">👤</span>
+              {items.map((row, idx) => {
+                const isModifying = isCalcOpen && activeItemIndex === idx;
+                return (
+                  <div 
+                    key={row.id || idx} 
+                    className={`item-row item-row-index-${idx} ${isModifying ? 'is-modifying' : ''}`} 
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '6px', 
+                      alignItems: 'stretch',
+                      transform: isModifying ? `translateY(${rowTranslateY}px)` : 'none'
+                    }}
+                  >
+                                {/* Dynamic grid row inputs */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: isModifying ? '2fr 1fr 1fr' : '2fr 1fr 1fr 32px', 
+                      gap: '8px', 
+                      alignItems: 'center' 
+                    }}>
                       <input 
                         type="text" 
-                        placeholder="Who bought this? (e.g. Alice)"
-                        className="assignee-input"
-                        style={{ flex: 1 }}
-                        value={row.splitUser || ''}
-                        disabled={row.splitUser?.trim().toLowerCase() === 'me'}
-                        onChange={(e) => handleItemFieldChange(idx, 'splitUser', e.target.value)}
+                        placeholder="Item name"
+                        className="item-input description"
+                        value={row.description || ''}
+                        onChange={(e) => handleItemFieldChange(idx, 'description', e.target.value)}
                       />
                       
-                      {/* "Me" Toggle Switch */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Me</span>
-                        <SwitchToggle
-                          checked={row.splitUser?.trim().toLowerCase() === 'me'}
-                          onChange={(checked) => handleItemFieldChange(idx, 'splitUser', checked ? 'Me' : '')}
-                          scale={0.75}
-                        />
+                      {/* suppression amount */}
+                      <input 
+                        type="text" 
+                        inputMode="none"
+                        placeholder="0.00"
+                        className="item-input amount"
+                        value={row.amount === 0 ? '' : row.amount}
+                        onFocus={() => handleAmountFocus(idx)}
+                        readOnly
+                      />
+
+                      <div 
+                        className="category-picker-trigger" 
+                        onClick={() => openCategoryPicker(idx)}
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          height: '28px', 
+                          borderRadius: 'var(--radius-sm)', 
+                          backgroundColor: 'var(--bg-app)', 
+                          cursor: 'pointer',
+                          boxSizing: 'border-box',
+                          padding: '0 6px',
+                          border: '1px solid var(--border-light)'
+                        }}
+                      >
+                        <span style={{ fontSize: '15px', lineHeight: '1' }}>
+                          {getCategoryIcon(row.category || 'Others')}
+                        </span>
+                        <svg fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" style={{ width: '10px', height: '10px', marginLeft: '3px', color: 'var(--text-secondary)' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
                       </div>
+
+                      {!isModifying && (
+                        <button 
+                          type="button" 
+                          className="delete-row-btn" 
+                          onClick={() => handleRemoveItemRow(idx)}
+                          disabled={items.length === 1}
+                          aria-label="Delete Item"
+                        >
+                          <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* KKB Split assignee row (expanded inline) */}
+                    {isKkbActive && (
+                      <div className="item-kkb-assignee-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                        <span className="assignee-avatar">👤</span>
+                        <input 
+                          type="text" 
+                          placeholder="Who bought this? (e.g. Alice)"
+                          className="assignee-input"
+                          style={{ flex: 1 }}
+                          value={row.splitUser || ''}
+                          disabled={row.splitUser?.trim().toLowerCase() === 'me'}
+                          onChange={(e) => handleItemFieldChange(idx, 'splitUser', e.target.value)}
+                        />
+                        
+                        {/* "Me" Toggle Switch */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Me</span>
+                          <SwitchToggle
+                            checked={row.splitUser?.trim().toLowerCase() === 'me'}
+                            onChange={(checked) => handleItemFieldChange(idx, 'splitUser', checked ? 'Me' : '')}
+                            scale={0.75}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

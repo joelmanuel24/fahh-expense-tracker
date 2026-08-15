@@ -29,6 +29,8 @@ export const Settings: React.FC<SettingsProps> = ({
   const store = useSettingsStore();
   const [user, setUser] = useState<any>(null);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [isLoadingInvites, setIsLoadingInvites] = useState<boolean>(false);
 
   // Monitor auth status
   useEffect(() => {
@@ -56,6 +58,84 @@ export const Settings: React.FC<SettingsProps> = ({
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const loadPendingInvitations = async () => {
+    if (!user || !isOnline) {
+      setInvitations([]);
+      return;
+    }
+    setIsLoadingInvites(true);
+    try {
+      const { data, error } = await supabase
+        .from('account_invitations')
+        .select('*')
+        .eq('invitee_email', user.email)
+        .eq('status', 'pending');
+      if (!error && data) {
+        setInvitations(data);
+      }
+    } catch (err) {
+      console.error('Failed to load pending invitations:', err);
+    } finally {
+      setIsLoadingInvites(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPendingInvitations();
+  }, [user, isOnline]);
+
+  const handleAcceptInvite = async (invite: any) => {
+    if (!user) return;
+    try {
+      // 1. Add record to collaborators table
+      const { error: colErr } = await supabase
+        .from('collaborators')
+        .insert({
+          id: crypto.randomUUID(),
+          account_id: invite.account_id,
+          user_id: user.id,
+          role: 'collaborator'
+        });
+      if (colErr) throw colErr;
+
+      // 2. Update invitation status to accepted
+      const { error: inviteErr } = await supabase
+        .from('account_invitations')
+        .update({ status: 'accepted' })
+        .eq('id', invite.id);
+      if (inviteErr) throw inviteErr;
+
+      // 3. Force full workspace sync so that the account and all its data are downloaded locally
+      await syncWorkspace(true);
+
+      // 4. Update the settings store so the UI accounts list updates
+      await store.loadAccounts();
+
+      // 5. Switch active account to the accepted account and refresh
+      await db.put('settings', { key: 'activeAccountId', value: invite.account_id });
+      window.location.reload();
+    } catch (err: any) {
+      console.error('Failed to accept invitation:', err);
+      alert('Error accepting invitation: ' + err.message);
+    }
+  };
+
+  const handleDeclineInvite = async (invite: any) => {
+    if (!confirm('Are you sure you want to decline this invitation?')) return;
+    try {
+      const { error } = await supabase
+        .from('account_invitations')
+        .update({ status: 'declined' })
+        .eq('id', invite.id);
+      if (error) throw error;
+
+      setInvitations((prev) => prev.filter((i) => i.id !== invite.id));
+    } catch (err: any) {
+      console.error('Failed to decline invitation:', err);
+      alert('Error declining invitation: ' + err.message);
+    }
+  };
 
   const loadSettingsData = async () => {
     await Promise.all([
@@ -223,6 +303,26 @@ export const Settings: React.FC<SettingsProps> = ({
           onToggleWidget={store.handleToggleWidget}
         />
 
+        {/* Excel Exporter Integration */}
+        <SettingsCard title="Excel Exporter">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '24px' }}>📊</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                Export filtered transactions & KKB splits to formatted .xlsx
+              </span>
+            </div>
+            <button 
+              type="button"
+              className="utility-action-btn-tinted" 
+              style={{ width: '100%', marginTop: '4px' }} 
+              onClick={() => onNavigate('excel-export')}
+            >
+              Export Transactions
+            </button>
+          </div>
+        </SettingsCard>
+
         {/* Data Utilities reset */}
         <SettingsCard title="Data Utilities">
           <div className="settings-utilities-grid">
@@ -230,6 +330,62 @@ export const Settings: React.FC<SettingsProps> = ({
             <button className="utility-action-btn-danger" onClick={handleResetDatabase}>Reset Database</button>
           </div>
         </SettingsCard>
+
+        {/* Pending Invitations list */}
+        {user && isOnline && invitations.length > 0 && (
+          <SettingsCard 
+            title="Pending Invitations" 
+            titleStyle={{
+              fontFamily: 'Outfit, sans-serif',
+              fontSize: '16px',
+              fontWeight: 700
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {invitations.map((invite) => (
+                <div 
+                  key={invite.id} 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '8px', 
+                    padding: '12px', 
+                    backgroundColor: 'var(--color-primary-tinted)', 
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid rgba(88, 76, 244, 0.15)' 
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                      Invited by <strong style={{ color: 'var(--text-primary)' }}>{invite.inviter_email}</strong>
+                    </span>
+                    <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'Outfit, sans-serif' }}>
+                      Join "{invite.account_name}"
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    <button 
+                      type="button"
+                      className="utility-action-btn-tinted" 
+                      style={{ flex: 1, margin: 0, padding: '10px 0', fontSize: '13px', fontWeight: 600, height: 'auto', borderRadius: 'var(--radius-sm)' }}
+                      onClick={() => handleAcceptInvite(invite)}
+                    >
+                      Accept
+                    </button>
+                    <button 
+                      type="button"
+                      className="utility-action-btn-danger" 
+                      style={{ flex: 1, margin: 0, padding: '10px 0', fontSize: '13px', fontWeight: 600, height: 'auto', borderRadius: 'var(--radius-sm)' }}
+                      onClick={() => handleDeclineInvite(invite)}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SettingsCard>
+        )}
 
         {/* Supabase Account Profile Card */}
         <SettingsCard title="Cloud Account">

@@ -7,6 +7,7 @@ import { ExpenseForm } from './features/Expenses/pages/Index';
 import { SplitReceipt } from './features/Expenses/components/SplitReceipt';
 import { Settings } from './features/Settings/pages/Index';
 import { ConfigureAccount } from './features/Settings/pages/ConfigureAccount';
+import { ExcelExport } from './features/Settings/components/ExcelExport';
 import { OweDetails } from './features/Dashboard/pages/OweDetails';
 import { AuthDrawer } from './components/AuthDrawer';
 import { FirstSyncOverlay } from './components/FirstSyncOverlay';
@@ -618,6 +619,16 @@ function App() {
             onNavigate={handleNavigate}
             onModalToggle={(open) => setIsModalActive(open)}
             onProfileClick={handleOpenAuth}
+          />
+        </section>
+      )}
+
+      {/* 5b. Excel Export View */}
+      {historyStack.includes('excel-export') && (
+        <section className={getViewClass('excel-export')}>
+          <ExcelExport
+            activeAccountId={activeAccountId}
+            onClose={() => window.history.back()}
           />
         </section>
       )}
